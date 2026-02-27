@@ -72,6 +72,19 @@ export default function AuthPage() {
     }
   }, [user, loading, router]);
 
+  // ─── Load remembered email on mount ─────────────────────────────────────────
+  useEffect(() => {
+    try {
+      const remembered = localStorage.getItem('investoft_remember_email');
+      if (remembered) {
+        setSiEmail(remembered);
+        setSiRemember(true);
+      }
+    } catch (e) {
+      // localStorage not available
+    }
+  }, []);
+
   function switchMode(newMode: 'signin' | 'signup') {
     if (newMode === mode) return;
     setIsTransitioning(true);
@@ -148,6 +161,19 @@ export default function AuthPage() {
       console.log('[Auth] signIn result — session exists:', !!sessionData?.session, 'user exists:', !!sessionData?.user);
 
       if (sessionData?.session) {
+        // ─── Remember Me: save or clear email ───────────────────────────────
+        try {
+          if (siRemember) {
+            localStorage.setItem('investoft_remember_email', siEmail);
+            // Store session with 30-day persistence hint
+            localStorage.setItem('investoft_remember_expiry', String(Date.now() + 30 * 24 * 60 * 60 * 1000));
+          } else {
+            localStorage.removeItem('investoft_remember_email');
+            localStorage.removeItem('investoft_remember_expiry');
+          }
+        } catch (e) {
+          // localStorage not available
+        }
         // SUCCESS: session exists, redirect to dashboard
         redirectingRef.current = true;
         setSiLoading(false);

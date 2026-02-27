@@ -72,6 +72,7 @@ function isInvalidRefreshTokenError(message: string): boolean {
     lower.includes('invalid refresh token') ||
     lower.includes('refresh token not found') ||
     lower.includes('token_not_found') ||
+    lower.includes('refresh_token_not_found') ||
     lower.includes('invalid_grant')
   );
 }
@@ -93,6 +94,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const recoveryInProgressRef = useRef(false);
   // Tracks whether a signIn call is in-flight so startup checks don't interfere
   const loginInProgressRef = useRef(false);
+  // Prevents double-invocation of recovery from both getSession and INITIAL_SESSION
+  const recoveryCalledRef = useRef(false);
   const router = useRouter();
 
   /**
@@ -101,19 +104,27 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
    * 2. Clear all auth storage
    * 3. Reset state to null
    * 4. Redirect to /auth
+   * Uses recoveryCalledRef to ensure this runs AT MOST ONCE per session lifecycle.
    */
   const handleInvalidRefreshToken = async () => {
     // Never run recovery while a fresh login is in progress
     if (recoveryInProgressRef.current || loginInProgressRef.current) return;
+    // Prevent double-invocation (e.g. both getSession AND INITIAL_SESSION triggering this)
+    if (recoveryCalledRef.current) return;
+    recoveryCalledRef.current = true;
     recoveryInProgressRef.current = true;
 
+    console.log('[AuthContext] handleInvalidRefreshToken: clearing session and redirecting');
+
+    // Clear storage BEFORE signOut to prevent Supabase from trying to use the bad token
+    clearAllAuthStorage();
+
     try {
-      await supabase.auth.signOut();
+      await supabase.auth.signOut({ scope: 'local' });
     } catch {
       // Ignore signOut errors — we are already in a broken state
     }
 
-    clearAllAuthStorage();
     setSession(null);
     setUser(null);
     setLoading(false);
@@ -124,6 +135,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
 
     recoveryInProgressRef.current = false;
+    // NOTE: recoveryCalledRef stays true — do not reset it, to prevent re-entry
   };
 
   useEffect(() => {
@@ -139,7 +151,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
         console.log('[AuthContext] onAuthStateChange event:', event, 'session:', currentSession ? 'exists' : 'null');
 
-        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        if (event === 'SIGNED_IN') {
+          // Reset recovery flag on fresh sign-in so future sessions can recover if needed
+          recoveryCalledRef.current = false;
+          setSession(currentSession);
+          setUser(currentSession?.user ?? null);
+          setLoading(false);
+        } else if (event === 'TOKEN_REFRESHED') {
+          if (!currentSession) {
+            // TOKEN_REFRESHED with null session means the refresh token was invalid
+            // This is the primary trigger for the refresh_token_not_found error
+            if (!loginInProgressRef.current) {
+              await handleInvalidRefreshToken();
+            }
+            return;
+          }
           setSession(currentSession);
           setUser(currentSession?.user ?? null);
           setLoading(false);
@@ -223,7 +249,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           phone: metadata?.phone || '',
           avatar_url: metadata?.avatarUrl || ''
         },
-        emailRedirectTo: `${window.location.origin}/auth/callback?next=/dashboard`
+        emailRedirectTo: `${window.location.origin}/auth/confirm`
       }
     });
     if (error) throw error;
@@ -234,6 +260,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   // Returns { data, error } — never throws — so callers can inspect the raw Supabase response.
   const signIn = async (email: string, password: string) => {
     loginInProgressRef.current = true;
+    // Reset recovery flag so a fresh login can succeed after a previous bad-token recovery
+    recoveryCalledRef.current = false;
     console.log('[AuthContext] signIn: calling signInWithPassword for', email);
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
@@ -250,6 +278,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
+  };
+
+  // Resend verification email — exposed so components don't need direct supabase access
+  const resendVerificationEmail = async (email: string) => {
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email,
+      options: { emailRedirectTo: `${window.location.origin}/auth/confirm` },
+    });
+    if (error) throw error;
   };
 
   // Get Current User
@@ -273,7 +311,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     signOut,
     getCurrentUser,
     isEmailVerified,
-    supabase,
+    resendVerificationEmail,
+    // NOTE: supabase client is intentionally NOT exposed here.
+    // Components must use the singleton from @/lib/supabase/client for DB queries,
+    // and must NEVER call supabase.auth.* methods directly — use context methods instead.
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
