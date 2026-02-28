@@ -431,6 +431,11 @@ export default function TradeDashboardPage() {
   const [depositReceiptId, setDepositReceiptId] = useState('');
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('card');
 
+  const [adminBankAccounts, setAdminBankAccounts] = useState<any[]>([]);
+  const [adminCryptoWallets, setAdminCryptoWallets] = useState<any[]>([]);
+  const [adminInstantAccounts, setAdminInstantAccounts] = useState<any[]>([]);
+  const adminPaymentFetchedRef = useRef(false);
+
   const [resendVerifyCooldown, setResendVerifyCooldown] = useState(0);
   const [resendVerifyLoading, setResendVerifyLoading] = useState(false);
   const [resendVerifyMsg, setResendVerifyMsg] = useState('');

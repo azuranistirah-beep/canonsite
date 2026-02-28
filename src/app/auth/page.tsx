@@ -21,6 +21,13 @@ export default function AuthPage() {
   const { user, loading, signUp, signIn, rateLimited } = useAuth();
   const redirectingRef = React.useRef(false);
 
+  // Helper to get redirect destination from URL query param
+  const getRedirectTarget = () => {
+    if (typeof window === 'undefined') return '/trade';
+    const params = new URLSearchParams(window.location.search);
+    return params.get('redirect') || '/trade';
+  };
+
   // Supabase project URL for diagnostic messages (no auth calls here)
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 
@@ -86,7 +93,7 @@ export default function AuthPage() {
   useEffect(() => {
     if (!loading && user && !redirectingRef.current) {
       redirectingRef.current = true;
-      router.replace('/trade');
+      router.replace(getRedirectTarget());
     }
   }, [user, loading, router]);
 
@@ -274,10 +281,55 @@ export default function AuthPage() {
         } catch (e) {
           // localStorage not available
         }
-        // SUCCESS: session exists, redirect to dashboard
+
+        // SUCCESS: session exists — check is_admin before redirecting
         redirectingRef.current = true;
         setSiLoading(false);
-        router.replace('/trade');
+
+        // Fetch user profile to determine redirect destination
+        try {
+          const supabaseClient = createClient();
+          const userId = sessionData.session.user.id;
+
+          if (process.env.NODE_ENV === 'development') {
+            console.log('[Auth] Login success. Session user id:', userId);
+          }
+
+          const { data: profile, error: profileError } = await supabaseClient
+            .from('user_profiles')
+            .select('is_admin, role')
+            .eq('id', userId)
+            .single();
+
+          if (process.env.NODE_ENV === 'development') {
+            console.log('[Auth] user_profiles query result:', { profile, error: profileError?.message });
+            console.log('[Auth] is_admin value:', profile?.is_admin);
+          }
+
+          if (profileError) {
+            // Query failed — do NOT assume non-admin. Log error and fall back to /trade.
+            console.error('[Auth] Failed to fetch user_profiles:', profileError.message, '— falling back to /trade');
+            router.replace('/trade');
+            return;
+          }
+
+          const isAdmin = profile?.is_admin === true || profile?.role === 'admin';
+
+          if (isAdmin) {
+            if (process.env.NODE_ENV === 'development') {
+              console.log('[Auth] User is admin — redirecting to /admin');
+            }
+            router.replace('/admin');
+          } else {
+            if (process.env.NODE_ENV === 'development') {
+              console.log('[Auth] User is not admin — redirecting to /trade');
+            }
+            router.replace('/trade');
+          }
+        } catch (profileErr) {
+          console.error('[Auth] Unexpected error fetching profile:', profileErr, '— falling back to /trade');
+          router.replace('/trade');
+        }
       } else {
         // No error thrown but session is null — env/config mismatch
         const projectRefDisplay = supabaseUrl.replace('https://', '').split('.')[0];
@@ -399,7 +451,7 @@ export default function AuthPage() {
       if (error) {
         setOtpError(error.message || 'Invalid OTP code.');
       } else {
-        router.replace('/trade');
+        router.replace(getRedirectTarget());
       }
     } catch {
       setOtpError('Failed to verify OTP.');
