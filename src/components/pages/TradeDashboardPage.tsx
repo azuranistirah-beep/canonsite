@@ -401,6 +401,36 @@ export default function TradeDashboardPage() {
   const [settingsNotifications, setSettingsNotifications] = useState(true);
   const [settingsSaved, setSettingsSaved] = useState(false);
 
+  // Withdraw modal states
+  const [showWithdrawModal, setShowWithdrawModal] = useState(false);
+  const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [withdrawMethod, setWithdrawMethod] = useState<'bank' | 'crypto'>('bank');
+  const [withdrawBankName, setWithdrawBankName] = useState('');
+  const [withdrawBankAccount, setWithdrawBankAccount] = useState('');
+  const [withdrawBankHolder, setWithdrawBankHolder] = useState('');
+  const [withdrawSwift, setWithdrawSwift] = useState('');
+  const [withdrawCryptoNetwork, setWithdrawCryptoNetwork] = useState('TRC20');
+  const [withdrawCryptoAddress, setWithdrawCryptoAddress] = useState('');
+  const [withdrawLoading, setWithdrawLoading] = useState(false);
+  const [withdrawSuccess, setWithdrawSuccess] = useState('');
+  const [withdrawError, setWithdrawError] = useState('');
+  const [withdrawReceiptId, setWithdrawReceiptId] = useState('');
+
+  // Transaction history modal states
+  const [showTxHistory, setShowTxHistory] = useState(false);
+  const [txHistoryData, setTxHistoryData] = useState<any[]>([]);
+  const [txTypeFilter, setTxTypeFilter] = useState<'all' | 'deposit' | 'withdrawal'>('all');
+  const [txPage, setTxPage] = useState(0);
+  const [txHistoryLoading, setTxHistoryLoading] = useState(false);
+
+  // Proof upload states (top-level, not inside renderDepositModal)
+  const [proofFile, setProofFile] = useState<File | null>(null);
+  const [proofPreview, setProofPreview] = useState<string | null>(null);
+  const [proofError, setProofError] = useState('');
+  const [proofUploading, setProofUploading] = useState(false);
+  const [depositReceiptId, setDepositReceiptId] = useState('');
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('card');
+
   const [resendVerifyCooldown, setResendVerifyCooldown] = useState(0);
   const [resendVerifyLoading, setResendVerifyLoading] = useState(false);
   const [resendVerifyMsg, setResendVerifyMsg] = useState('');
@@ -937,6 +967,19 @@ export default function TradeDashboardPage() {
   const openDepositModal = useCallback(() => {
     setShowDepositModal(true); setDepositSuccess(''); setDepositError(''); setDepositAmount('');
     fetchExchangeRates();
+    // Fetch admin payment data if not already fetched
+    if (!adminPaymentFetchedRef.current) {
+      adminPaymentFetchedRef.current = true;
+      Promise.all([
+        supabase.from('payment_bank_accounts').select('*').eq('status', 'active'),
+        supabase.from('payment_crypto_wallets').select('*').eq('status', 'active'),
+        supabase.from('payment_instant_accounts').select('*').eq('status', 'active'),
+      ]).then(([bankRes, cryptoRes, instantRes]) => {
+        if (bankRes.data) setAdminBankAccounts(bankRes.data);
+        if (cryptoRes.data) setAdminCryptoWallets(cryptoRes.data);
+        if (instantRes.data) setAdminInstantAccounts(instantRes.data);
+      }).catch(() => { /* silently fail, fallback to hardcoded */ });
+    }
   }, [fetchExchangeRates]);
 
   const depositAmountNum = parseFloat(depositAmount) || 0;
@@ -1044,9 +1087,16 @@ export default function TradeDashboardPage() {
     if (depositTab === 'stripe') {
       setDepositLoading(true); setDepositError('');
       try {
+        // Get current session token to pass as Authorization header
+        const { data: { session } } = await supabase.auth.getSession();
+        const accessToken = session?.access_token;
+
+        const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+        if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
+
         const res = await fetch('/api/stripe/create-checkout-session', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({ amount: depositAmountNum, currency: depositCurrency, depositTab: 'stripe' }),
         });
         const data = await res.json();
@@ -1085,6 +1135,50 @@ export default function TradeDashboardPage() {
     setChartTimeframe(settingsDefaultTF);
     setSettingsSaved(true);
     setTimeout(() => setSettingsSaved(false), 2000);
+  };
+
+  const loadTxHistory = useCallback(async () => {
+    if (!user) return;
+    setTxHistoryLoading(true);
+    try {
+      const [depRes, wdRes] = await Promise.all([
+        supabase.from('deposit_requests').select('id, amount, payment_method, status, created_at, notes').eq('user_id', user.id).order('created_at', { ascending: false }).limit(100),
+        supabase.from('withdrawal_requests').select('id, amount, method, status, created_at').eq('user_id', user.id).order('created_at', { ascending: false }).limit(100),
+      ]);
+      const deposits = (depRes.data || []).map((d: any) => ({ ...d, type: 'deposit', method: d.payment_method, currency: 'USD' }));
+      const withdrawals = (wdRes.data || []).map((w: any) => ({ ...w, type: 'withdrawal', currency: 'USD' }));
+      const combined = [...deposits, ...withdrawals].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      setTxHistoryData(combined);
+    } catch (e) { console.error('loadTxHistory error:', e); }
+    finally { setTxHistoryLoading(false); }
+  }, [user?.id]);
+
+  const handleWithdrawSubmit = async () => {
+    if (!user) return;
+    const withdrawAmountNum = parseFloat(withdrawAmount) || 0;
+    if (withdrawAmountNum < 100) { setWithdrawError('Minimum penarikan adalah $100 USD'); return; }
+    if (withdrawAmountNum > realBalance) { setWithdrawError('Saldo tidak mencukupi'); return; }
+    if (withdrawMethod === 'bank' && (!withdrawBankName.trim() || !withdrawBankAccount.trim() || !withdrawBankHolder.trim())) {
+      setWithdrawError('Lengkapi semua data rekening bank'); return;
+    }
+    if (withdrawMethod === 'crypto' && !withdrawCryptoAddress.trim()) {
+      setWithdrawError('Masukkan alamat wallet tujuan'); return;
+    }
+    setWithdrawLoading(true); setWithdrawError('');
+    try {
+      const destination = withdrawMethod === 'bank'
+        ? JSON.stringify({ bank: withdrawBankName, account: withdrawBankAccount, holder: withdrawBankHolder, swift: withdrawSwift })
+        : JSON.stringify({ network: withdrawCryptoNetwork, address: withdrawCryptoAddress });
+      const { data, error } = await supabase.from('withdrawal_requests').insert({
+        user_id: user.id, amount: withdrawAmountNum, currency: 'USD',
+        method: withdrawMethod, destination, status: 'pending',
+      }).select().single();
+      if (error) throw error;
+      setWithdrawSuccess(`Permintaan penarikan $${withdrawAmountNum.toLocaleString()} USD telah diajukan. Tim kami akan memprosesnya dalam 1-3 hari kerja.`);
+      if (data?.id) setWithdrawReceiptId(data.id);
+    } catch (e) {
+      setWithdrawError('Gagal mengajukan penarikan. Silakan coba lagi.');
+    } finally { setWithdrawLoading(false); }
   };
 
   const handleResendVerification = async () => {
@@ -1340,7 +1434,7 @@ export default function TradeDashboardPage() {
           <div style={{ padding: 24, textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>{t('notifications.noNotifications')}</div>
         ) : (
           tradeAlerts.map(alert => {
-            const alertColors = { success: { dot: '#22c55e', bg: 'rgba(34,197,94,0.06)' }, error: { dot: '#ef4444', bg: 'rgba(239,68,68,0.06)' }, warning: { dot: '#f59e0b', bg: 'rgba(245,158,11,0.06)' }, info: { dot: '#3b82f6', bg: 'rgba(59,130,246,0.06)' } };
+            const alertColors = { success: { dot: '#22c55e', bg: 'rgba(34,197,94,0.06)' }, error: { dot: '#ef4444', bg: 'rgba(239,68,68,0.06)' }, warning: { dot: '#f59e0b', bg: 'rgba(245,158,11,0.06)' }, info: { dot: '#3b82f6', bg: 'rgba(59,130,235,0.06)' } };
             const ac = alertColors[alert.type];
             return (
               <button key={alert.id} onClick={() => markAlertRead(alert.id)} style={{ width: '100%', display: 'flex', alignItems: 'flex-start', gap: 10, padding: '12px 16px', background: alert.read ? 'transparent' : ac.bg, border: 'none', borderBottom: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer', textAlign: 'left', minHeight: 44 }}>
@@ -1436,6 +1530,8 @@ export default function TradeDashboardPage() {
           onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.96)'; }}
           onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)'; }}
         >{t('topBar.deposit')}</button>
+        <button onClick={() => { setShowWithdrawModal(true); setWithdrawSuccess(''); setWithdrawError(''); setWithdrawAmount(''); }} style={{ background: 'rgba(34,197,94,0.12)', color: '#22c55e', fontSize: isDesktop ? 13 : 11, fontWeight: 700, padding: isDesktop ? '0 14px' : '0 8px', height: isDesktop ? 44 : 36, borderRadius: 8, border: '1px solid rgba(34,197,94,0.25)', cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' }}>Tarik</button>
+        <button onClick={() => { setShowTxHistory(true); loadTxHistory(); setTxPage(0); }} style={{ background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.6)', fontSize: isDesktop ? 13 : 11, fontWeight: 700, padding: isDesktop ? '0 14px' : '0 8px', height: isDesktop ? 44 : 36, borderRadius: 8, border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer', flexShrink: 0, whiteSpace: 'nowrap' }}>Riwayat</button>
       </div>
     </div>
   );
@@ -1730,12 +1826,21 @@ export default function TradeDashboardPage() {
   ] as const;
 
   const renderDepositModal = () => {
-    const banksForCurrency = BANKS[depositCurrency] ?? BANKS['USD'];
+    // Use admin-managed bank accounts if available, fallback to hardcoded
+    const adminBanksForCurrency = adminBankAccounts.filter(b => b.currency === depositCurrency);
+    const banksForCurrency = adminBanksForCurrency.length > 0
+      ? adminBanksForCurrency.map(b => ({ name: b.bank_name, account: b.account_number, swift: b.swift_code, flag: '', holder: b.account_holder }))
+      : (BANKS[depositCurrency] ?? BANKS['USD']);
     const filteredBanks = bankSearch
       ? banksForCurrency.filter(b => b.name.toLowerCase().includes(bankSearch.toLowerCase()))
       : banksForCurrency;
     const selectedBankInfo = banksForCurrency.find(b => b.name === selectedBank);
-    const cryptoWallet = CRYPTO_WALLETS[selectedCrypto];
+
+    // Use admin-managed crypto wallets if available, fallback to hardcoded
+    const adminCryptoForSelected = adminCryptoWallets.find(w => w.crypto === selectedCrypto);
+    const cryptoWallet = adminCryptoForSelected
+      ? { address: adminCryptoForSelected.wallet_address, network: adminCryptoForSelected.network, icon: selectedCrypto === 'BTC' ? '\u20BF' : selectedCrypto === 'ETH' ? '\u27E0' : '\uD83D\uDCB5', qr_code_url: adminCryptoForSelected.qr_code_url }
+      : { ...CRYPTO_WALLETS[selectedCrypto], qr_code_url: '' };
 
     // Payment methods per currency (no emojis)
     const getPaymentMethods = () => {
@@ -1774,7 +1879,7 @@ export default function TradeDashboardPage() {
     };
 
     const paymentMethods = getPaymentMethods();
-    const [selectedPaymentMethod, setSelectedPaymentMethodLocal] = React.useState(paymentMethods[0]?.key || 'card');
+    // selectedPaymentMethod is now a top-level state — no useState here
 
     const handleProofFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
@@ -1919,7 +2024,7 @@ export default function TradeDashboardPage() {
                       {paymentMethods.map((pm) => (
                         <button
                           key={pm.key}
-                          onClick={() => setSelectedPaymentMethodLocal(pm.key)}
+                          onClick={() => setSelectedPaymentMethod(pm.key)}
                           style={{ padding: '12px 14px', borderRadius: 10, background: selectedPaymentMethod === pm.key ? 'rgba(59,130,246,0.12)' : 'rgba(255,255,255,0.03)', border: `1px solid ${selectedPaymentMethod === pm.key ? 'rgba(59,130,246,0.4)' : 'rgba(255,255,255,0.08)'}`, display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', transition: 'all 0.15s ease', textAlign: 'left' }}
                         >
                           <div style={{ width: 32, height: 32, borderRadius: 8, background: 'rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>

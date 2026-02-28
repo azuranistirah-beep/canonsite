@@ -1,20 +1,50 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
 
 export async function middleware(request: NextRequest) {
   const response = NextResponse.next({ request });
 
-  // Check for stale Supabase auth cookies without making any network requests.
-  // Network-based auth validation (getUser/getSession) causes repeated
-  // refresh_token_not_found errors on every request when the token is stale.
-  // The client-side AuthContext handles token validation and recovery instead.
-  const authCookies = request.cookies.getAll().filter(
-    ({ name }) =>
-      name.startsWith('sb-') ||
-      name.includes('auth-token') ||
-      name.includes('supabase')
-  );
+  // Only apply admin check for /admin routes
+  if (request.nextUrl.pathname.startsWith('/admin')) {
+    try {
+      const supabase = createServerClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          cookies: {
+            getAll() {
+              return request.cookies.getAll();
+            },
+            setAll(cookiesToSet) {
+              cookiesToSet.forEach(({ name, value, options }) =>
+                response.cookies.set(name, value, options)
+              );
+            },
+          },
+        }
+      );
 
-  // Pass through — let client-side auth handle session management
+      const { data: { user }, error } = await supabase.auth.getUser();
+
+      if (error || !user) {
+        return NextResponse.redirect(new URL('/auth?redirect=/admin', request.url));
+      }
+
+      // Check if user is admin
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('role, is_admin')
+        .eq('id', user.id)
+        .single();
+
+      if (!profile || (profile.role !== 'admin' && !profile.is_admin)) {
+        return NextResponse.redirect(new URL('/trade', request.url));
+      }
+    } catch {
+      return NextResponse.redirect(new URL('/auth?redirect=/admin', request.url));
+    }
+  }
+
   return response;
 }
 

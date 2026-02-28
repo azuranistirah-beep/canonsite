@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { createClient } from '@/lib/supabase/server';
+import { createClient as createBrowserClient } from '@supabase/supabase-js';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2025-01-27.acacia',
@@ -45,9 +46,45 @@ const CURRENCY_MAX_AMOUNTS: Record<string, number> = {
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
+    // Check STRIPE_SECRET_KEY is configured
+    if (!process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY === 'your-stripe-secret-key-here') {
+      return NextResponse.json({ error: 'Stripe belum dikonfigurasi. Silakan hubungi administrator.' }, { status: 503 });
+    }
+
+    let user: { id: string; email?: string } | null = null;
+
+    // Strategy 1: Try cookie-based auth (standard SSR flow)
+    try {
+      const supabaseCookie = await createClient();
+      const { data: { user: cookieUser }, error: cookieError } = await supabaseCookie.auth.getUser();
+      if (!cookieError && cookieUser) {
+        user = cookieUser;
+      }
+    } catch {
+      // Cookie auth failed, will try token next
+    }
+
+    // Strategy 2: Try Authorization Bearer token from request header
+    if (!user) {
+      const authHeader = req.headers.get('Authorization');
+      const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+      if (token) {
+        try {
+          const supabaseAdmin = createBrowserClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+          );
+          const { data: { user: tokenUser }, error: tokenError } = await supabaseAdmin.auth.getUser(token);
+          if (!tokenError && tokenUser) {
+            user = tokenUser;
+          }
+        } catch {
+          // Token auth also failed
+        }
+      }
+    }
+
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -111,7 +148,9 @@ export async function POST(req: NextRequest) {
 
     const session = await stripe.checkout.sessions.create(sessionParams);
 
-    const { error: dbError } = await supabase.from('deposit_requests').insert({
+    // Use a fresh server client for DB insert (with user context)
+    const supabaseForDb = await createClient();
+    const { error: dbError } = await supabaseForDb.from('deposit_requests').insert({
       user_id: user.id,
       amount: amount,
       payment_method: `stripe_${depositTab || 'card'}`,
