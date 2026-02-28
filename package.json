@@ -51,13 +51,16 @@
   "dependencies": {
     "@dhiwise/component-tagger": "^1.0.14",
     "@heroicons/react": "^2.2.0",
+    "@stripe/stripe-js": "^8.8.0",
     "@supabase/ssr": "^0.8.0",
+    "@supabase/supabase-js": "^2.87.1",
     "@tailwindcss/forms": "^0.5.10",
     "@tailwindcss/typography": "^0.5.16",
     "next": "15.1.11",
     "react": "19.0.3",
     "react-dom": "19.0.3",
     "recharts": "^2.15.2",
+    "stripe": "^20.4.0",
     "yahoo-finance2": "^3.13.1"
   },
   "devDependencies": {

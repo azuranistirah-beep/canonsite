@@ -2,12 +2,33 @@
 
 import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
+import { createClient, clearSupabaseAuthStorage, incrementAuthCounter } from '@/lib/supabase/client';
 
 const AuthContext = createContext<any>({});
 
 // Single client instance at module level — shared across the entire app
 const supabase = createClient();
+
+// ─── 429 Cooldown helpers ─────────────────────────────────────────────────────
+const COOLDOWN_KEY = 'investoft_auth_429_until';
+const COOLDOWN_DURATION_MS = 60_000; // 60 seconds
+
+function isIn429Cooldown(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    const until = sessionStorage.getItem(COOLDOWN_KEY);
+    if (until && parseInt(until, 10) > Date.now()) return true;
+    if (until) sessionStorage.removeItem(COOLDOWN_KEY);
+  } catch { /* ignore */ }
+  return false;
+}
+
+function set429Cooldown(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    sessionStorage.setItem(COOLDOWN_KEY, String(Date.now() + COOLDOWN_DURATION_MS));
+  } catch { /* ignore */ }
+}
 
 /**
  * Checks whether a JWT access token is still valid (not expired)
@@ -27,43 +48,6 @@ function isTokenValid(accessToken: string | undefined): boolean {
 }
 
 /**
- * Clear ALL Supabase auth-related keys from localStorage and sessionStorage.
- * Called when an invalid refresh token is detected.
- */
-function clearAllAuthStorage(): void {
-  try {
-    const keysToRemove: string[] = [];
-    for (const key of Object.keys(localStorage)) {
-      if (
-        key.startsWith('sb-') ||
-        key.includes('auth-token') ||
-        key.includes('supabase')
-      ) {
-        keysToRemove.push(key);
-      }
-    }
-    keysToRemove.forEach((key) => localStorage.removeItem(key));
-  } catch {
-    // localStorage not available (SSR)
-  }
-  try {
-    const keysToRemove: string[] = [];
-    for (const key of Object.keys(sessionStorage)) {
-      if (
-        key.startsWith('sb-') ||
-        key.includes('auth-token') ||
-        key.includes('supabase')
-      ) {
-        keysToRemove.push(key);
-      }
-    }
-    keysToRemove.forEach((key) => sessionStorage.removeItem(key));
-  } catch {
-    // sessionStorage not available
-  }
-}
-
-/**
  * Detect if an error message indicates an invalid/missing refresh token.
  */
 function isInvalidRefreshTokenError(message: string): boolean {
@@ -74,6 +58,16 @@ function isInvalidRefreshTokenError(message: string): boolean {
     lower.includes('token_not_found') ||
     lower.includes('refresh_token_not_found') ||
     lower.includes('invalid_grant')
+  );
+}
+
+function is429Error(message: string): boolean {
+  const lower = message.toLowerCase();
+  return (
+    lower.includes('rate limit') ||
+    lower.includes('too many requests') ||
+    lower.includes('request rate limit') ||
+    lower.includes('429')
   );
 }
 
@@ -89,151 +83,216 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<any>(null);
   const [session, setSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [rateLimited, setRateLimited] = useState(false);
   const subscriptionRef = useRef<{ unsubscribe: () => void } | null>(null);
   const initializedRef = useRef(false);
-  const recoveryInProgressRef = useRef(false);
+  // PERMANENT guard — once recovery runs, it NEVER resets to false.
+  const alreadyRecoveredRef = useRef(false);
   // Tracks whether a signIn call is in-flight so startup checks don't interfere
   const loginInProgressRef = useRef(false);
-  // Prevents double-invocation of recovery from both getSession and INITIAL_SESSION
-  const recoveryCalledRef = useRef(false);
+  // Single-flight guard: prevents concurrent getSession() calls
+  const inFlightRef = useRef(false);
   const router = useRouter();
 
   /**
-   * Perform a safe recovery when an invalid refresh token is detected:
-   * 1. Best-effort signOut (ignore errors)
-   * 2. Clear all auth storage
-   * 3. Reset state to null
-   * 4. Redirect to /auth
-   * Uses recoveryCalledRef to ensure this runs AT MOST ONCE per session lifecycle.
+   * Perform a safe recovery when an invalid refresh token is detected.
+   * Guard: runs AT MOST ONCE per page lifecycle.
    */
   const handleInvalidRefreshToken = async () => {
-    // Never run recovery while a fresh login is in progress
-    if (recoveryInProgressRef.current || loginInProgressRef.current) return;
-    // Prevent double-invocation (e.g. both getSession AND INITIAL_SESSION triggering this)
-    if (recoveryCalledRef.current) return;
-    recoveryCalledRef.current = true;
-    recoveryInProgressRef.current = true;
+    if (alreadyRecoveredRef.current || loginInProgressRef.current) return;
+    alreadyRecoveredRef.current = true;
 
-    console.log('[AuthContext] handleInvalidRefreshToken: clearing session and redirecting');
+    console.warn('[AuthContext] Invalid refresh token detected — clearing session (one-time recovery)');
 
-    // Clear storage BEFORE signOut to prevent Supabase from trying to use the bad token
-    clearAllAuthStorage();
+    clearSupabaseAuthStorage();
 
     try {
       await supabase.auth.signOut({ scope: 'local' });
     } catch {
-      // Ignore signOut errors — we are already in a broken state
+      // Ignore signOut errors
     }
 
     setSession(null);
     setUser(null);
     setLoading(false);
 
-    // Only redirect if not already on /auth
     if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/auth')) {
       router.replace('/auth');
     }
-
-    recoveryInProgressRef.current = false;
-    // NOTE: recoveryCalledRef stays true — do not reset it, to prevent re-entry
   };
 
   useEffect(() => {
+    // Strict-mode / double-mount guard
     if (initializedRef.current) return;
     initializedRef.current = true;
 
     let isMounted = true;
 
-    // Set up auth state listener ONCE
-    const { data } = supabase.auth.onAuthStateChange(
-      async (event, currentSession) => {
-        if (!isMounted) return;
+    // ── Dev counter log ──────────────────────────────────────────────────────
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[AuthContext] mount — setting up single onAuthStateChange listener');
+    }
 
-        console.log('[AuthContext] onAuthStateChange event:', event, 'session:', currentSession ? 'exists' : 'null');
+    // ── 429 cooldown check ───────────────────────────────────────────────────
+    if (isIn429Cooldown()) {
+      console.warn('[AuthContext] 429 cooldown active — skipping all auth calls. Reload after cooldown expires.');
+      setRateLimited(true);
+      setLoading(false);
+      return;
+    }
 
-        if (event === 'SIGNED_IN') {
-          // Reset recovery flag on fresh sign-in so future sessions can recover if needed
-          recoveryCalledRef.current = false;
-          setSession(currentSession);
-          setUser(currentSession?.user ?? null);
-          setLoading(false);
-        } else if (event === 'TOKEN_REFRESHED') {
-          if (!currentSession) {
-            // TOKEN_REFRESHED with null session means the refresh token was invalid
-            // This is the primary trigger for the refresh_token_not_found error
-            if (!loginInProgressRef.current) {
-              await handleInvalidRefreshToken();
-            }
-            return;
+    // ── Single-flight guard ──────────────────────────────────────────────────
+    if (inFlightRef.current) {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('[AuthContext] initAuth already in-flight — skipping duplicate call');
+      }
+      return;
+    }
+    inFlightRef.current = true;
+
+    const initAuth = async () => {
+      if (!isMounted) return;
+
+      // Register onAuthStateChange ONCE.
+      // IMPORTANT: We do NOT call getSession() separately here.
+      // The INITIAL_SESSION event fired by onAuthStateChange already provides
+      // the current session — calling getSession() again would be a duplicate
+      // request and the primary cause of 429 rate limits.
+      incrementAuthCounter('onAuthStateChange');
+
+      const { data } = supabase.auth.onAuthStateChange(
+        async (event, currentSession) => {
+          if (!isMounted) return;
+
+          if (process.env.NODE_ENV === 'development') {
+            console.log('[AuthContext] onAuthStateChange event:', event, 'session:', currentSession ? 'exists' : 'null');
           }
-          setSession(currentSession);
-          setUser(currentSession?.user ?? null);
-          setLoading(false);
-        } else if (event === 'SIGNED_OUT' || event === 'USER_DELETED') {
-          setSession(null);
-          setUser(null);
-          setLoading(false);
-        } else if (event === 'INITIAL_SESSION') {
-          // INITIAL_SESSION fires once on startup.
-          // If session is null here, it means no valid session exists.
-          // If session is present, validate the access token locally.
-          if (currentSession) {
-            if (isTokenValid(currentSession.access_token)) {
+
+          if (event === 'SIGNED_IN') {
+            setSession(currentSession);
+            setUser(currentSession?.user ?? null);
+            setLoading(false);
+          } else if (event === 'TOKEN_REFRESHED') {
+            if (!currentSession) {
+              if (!alreadyRecoveredRef.current && !loginInProgressRef.current) {
+                await handleInvalidRefreshToken();
+              }
+              return;
+            }
+            setSession(currentSession);
+            setUser(currentSession?.user ?? null);
+            setLoading(false);
+          } else if (event === 'SIGNED_OUT') {
+            setSession(null);
+            setUser(null);
+            setLoading(false);
+            if (
+              !loginInProgressRef.current &&
+              typeof window !== 'undefined' &&
+              !window.location.pathname.startsWith('/auth')
+            ) {
+              router.replace('/auth');
+            }
+          } else if (event === 'USER_DELETED') {
+            setSession(null);
+            setUser(null);
+            setLoading(false);
+          } else if (event === 'INITIAL_SESSION') {
+            if (currentSession) {
+              if (!isTokenValid(currentSession.access_token)) {
+                if (!currentSession.refresh_token) {
+                  await handleInvalidRefreshToken();
+                  return;
+                }
+              }
               setSession(currentSession);
               setUser(currentSession.user ?? null);
             } else {
-              // Access token is expired — attempt recovery only if no login in progress
-              if (isMounted && !loginInProgressRef.current) {
-                await handleInvalidRefreshToken();
-                return;
-              }
+              setSession(null);
+              setUser(null);
             }
-          } else {
-            setSession(null);
-            setUser(null);
+            setLoading(false);
+
+            // ── Dev counter summary ──────────────────────────────────────────
+            if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
+              const counters = (window as any).__authCallCounters || {};
+              console.log(
+                `[AuthCounter] Mount complete — getSession: ${counters.getSession ?? 0}, onAuthStateChange: ${counters.onAuthStateChange ?? 0}`,
+                '(target: getSession=0, onAuthStateChange=1)'
+              );
+            }
           }
-          setLoading(false);
         }
-      }
-    );
-    subscriptionRef.current = data.subscription;
+      );
+      subscriptionRef.current = data.subscription;
+      inFlightRef.current = false;
+    };
 
-    // Startup check: call getSession once to detect broken sessions immediately.
-    // This is the ONLY getSession call in the entire app.
-    supabase.auth.getSession().then(({ data: sessionData, error }) => {
-      if (!isMounted) return;
+    initAuth().catch((err: any) => {
+      inFlightRef.current = false;
+      const msg: string = err?.message || String(err || '');
 
-      // Never interfere with an active login attempt
-      if (loginInProgressRef.current) return;
-
-      if (error) {
-        const msg = error.message || '';
-        if (isInvalidRefreshTokenError(msg)) {
-          handleInvalidRefreshToken();
-          return;
-        }
-        // Other errors — treat as no session
-        setSession(null);
-        setUser(null);
+      if (is429Error(msg)) {
+        console.warn('[AuthContext] 429 from initAuth — activating cooldown');
+        set429Cooldown();
+        setRateLimited(true);
         setLoading(false);
         return;
       }
-
-      // If getSession returns a session, validate the access token
-      if (sessionData?.session) {
-        if (!isTokenValid(sessionData.session.access_token)) {
-          handleInvalidRefreshToken();
-          return;
-        }
-        // Valid session — state will be set by INITIAL_SESSION event above
-      } else {
-        // No session — state will be set by INITIAL_SESSION event above
+      if (isInvalidRefreshTokenError(msg)) {
+        handleInvalidRefreshToken();
+        return;
       }
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('[AuthContext] initAuth error (non-fatal):', msg);
+      }
+      setLoading(false);
     });
+
+    // Global safety net: catch any unhandled "Invalid Refresh Token" errors
+    const handleAuthError = (event: ErrorEvent) => {
+      if (
+        event.message &&
+        isInvalidRefreshTokenError(event.message) &&
+        !alreadyRecoveredRef.current &&
+        !loginInProgressRef.current
+      ) {
+        console.warn('[AuthContext] Caught unhandled invalid refresh token error — recovering');
+        handleInvalidRefreshToken();
+      }
+    };
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      const message = event?.reason?.message || String(event?.reason || '');
+      if (is429Error(message)) {
+        console.warn('[AuthContext] 429 unhandled rejection — activating cooldown');
+        event.preventDefault();
+        set429Cooldown();
+        setRateLimited(true);
+        setLoading(false);
+        return;
+      }
+      if (
+        isInvalidRefreshTokenError(message) &&
+        !alreadyRecoveredRef.current &&
+        !loginInProgressRef.current
+      ) {
+        console.warn('[AuthContext] Caught unhandled promise rejection for invalid refresh token — recovering');
+        event.preventDefault();
+        handleInvalidRefreshToken();
+      }
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('error', handleAuthError);
+      window.addEventListener('unhandledrejection', handleUnhandledRejection);
+    }
 
     return () => {
       isMounted = false;
       subscriptionRef.current?.unsubscribe();
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('error', handleAuthError);
+        window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -257,20 +316,33 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   // Email/Password Sign In
-  // Returns { data, error } — never throws — so callers can inspect the raw Supabase response.
   const signIn = async (email: string, password: string) => {
+    if (loginInProgressRef.current) {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('[AuthContext] signIn: already in progress, ignoring duplicate call');
+      }
+      throw new Error('Sign-in already in progress. Please wait.');
+    }
     loginInProgressRef.current = true;
-    // Reset recovery flag so a fresh login can succeed after a previous bad-token recovery
-    recoveryCalledRef.current = false;
-    console.log('[AuthContext] signIn: calling signInWithPassword for', email);
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    });
-    console.log('[AuthContext] signInWithPassword result — data:', data, 'error:', error);
-    loginInProgressRef.current = false;
-    if (error) throw error;
-    return data;
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[AuthContext] signIn: calling signInWithPassword for', email);
+    }
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      if (error) {
+        if (is429Error(error.message)) {
+          set429Cooldown();
+          setRateLimited(true);
+        }
+        throw error;
+      }
+      return data;
+    } finally {
+      loginInProgressRef.current = false;
+    }
   };
 
   // Sign Out
@@ -280,7 +352,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setSession(null);
   };
 
-  // Resend verification email — exposed so components don't need direct supabase access
+  // Resend verification email
   const resendVerificationEmail = async (email: string) => {
     const { error } = await supabase.auth.resend({
       type: 'signup',
@@ -306,15 +378,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     user,
     session,
     loading,
+    rateLimited,
     signUp,
     signIn,
     signOut,
     getCurrentUser,
     isEmailVerified,
     resendVerificationEmail,
-    // NOTE: supabase client is intentionally NOT exposed here.
-    // Components must use the singleton from @/lib/supabase/client for DB queries,
-    // and must NEVER call supabase.auth.* methods directly — use context methods instead.
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

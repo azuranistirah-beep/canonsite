@@ -1,0 +1,185 @@
+{
+    "topBar": {
+        "demoAccount": "Demo Account",
+        "realAccount": "Tunay na Account",
+        "deposit": "Deposito",
+        "balance": "Balanse"
+    },
+    "secondBar": {
+        "searchAssets": "Maghanap ng Asset",
+        "settings": "Mga Setting",
+        "allAssets": "Lahat ng Asset",
+        "payout": "Kita"
+    },
+    "tradePanel": {
+        "duration": "Tagal",
+        "amount": "Halaga",
+        "sell": "IBENTA",
+        "buy": "BILHIN",
+        "priceUnavailable": "Hindi available ang presyo, i-refresh",
+        "emailVerificationRequired": "Kailangan ng email verification"
+    },
+    "bottomNav": {
+        "platform": "Platform",
+        "offers": "Mga Alok",
+        "bot": "Bot",
+        "support": "Suporta",
+        "account": "Account"
+    },
+    "notifications": {
+        "title": "Mga Abiso sa Trade",
+        "markAllRead": "Markahan lahat bilang nabasa",
+        "noNotifications": "Wala pang mga abiso"
+    },
+    "search": {
+        "placeholder": "Maghanap ng asset (Bitcoin, ETH, Ginto, EUR/USD...)",
+        "noResults": "Walang nahanap na asset para sa",
+        "allAssets": "Lahat ng Asset"
+    },
+    "deposit": {
+        "title": "Mag-deposito ng Pondo",
+        "subtitle": "Magdagdag ng balanse sa iyong Tunay na trading account",
+        "realAccount": "Tunay na Account",
+        "realAccountDesc": "Ang mga deposito ay ini-credit sa iyong Tunay na balanse",
+        "depositAmount": "Halaga ng Deposito",
+        "paymentMethod": "Paraan ng Pagbabayad",
+        "submitButton": "Isumite ang Kahilingan sa Deposito",
+        "processing": "Pinoproseso...",
+        "successTitle": "Naisumite ang Kahilingan!",
+        "close": "Isara",
+        "minimumDeposit": "Minimum na deposito ay",
+        "loadingRates": "Naglo-load ng mga exchange rate...",
+        "bankTransfer": "Bank Transfer",
+        "bankTransferInfo": "BCA: 1234567890 a.n. PT Investoft Indonesia",
+        "creditCard": "Credit Card",
+        "creditCardInfo": "Visa / Mastercard \u2014 awtomatikong pinoproseso sa loob ng 5 minuto",
+        "crypto": "Cryptocurrency",
+        "cryptoInfo": "BTC: bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
+        "availablePaymentMethods": "Mga available na paraan ng pagbabayad",
+        "secureStripe": "Ligtas na Pagbabayad sa pamamagitan ng Stripe",
+        "secureStripeDesc": "256-bit SSL encryption \u00b7 PCI DSS compliant \u00b7 Instant na pag-update ng balanse",
+        "pm_card": "Credit / Debit Card",
+        "pm_fpx": "FPX Online Banking",
+        "pm_touchngo": "Touch 'n Go eWallet",
+        "pm_grabpay": "GrabPay",
+        "pm_paynow": "PayNow",
+        "pm_promptpay": "PromptPay",
+        "pm_gcash": "GCash",
+        "pm_paymaya": "PayMaya",
+        "pm_alipay": "Alipay",
+        "pm_wechatpay": "WeChat Pay"
+    },
+    "settings": {
+        "title": "Mga Setting",
+        "chartTab": "\ud83d\udcc8 Chart",
+        "accountTab": "\ud83d\udc64 Account",
+        "tradingTab": "\u2699\ufe0f Trading",
+        "chartTheme": "Tema ng Chart",
+        "chartThemeDesc": "Madilim o maliwanag na background ng chart",
+        "dark": "Madilim",
+        "light": "Maliwanag",
+        "defaultTimeframe": "Default na Timeframe",
+        "defaultTimeframeDesc": "Timeframe ng chart kapag binuksan",
+        "defaultAmount": "Default na Halaga ng Trade",
+        "defaultAmountDesc": "Paunang halaga para sa bawat trade",
+        "autoConfirm": "Auto Confirm",
+        "autoConfirmDesc": "Laktawan ang dialog ng kumpirmasyon",
+        "notifications": "Mga Abiso",
+        "notificationsDesc": "Mga abiso sa resulta ng trade",
+        "priceAlerts": "Mga Setting ng Price Alert",
+        "toastThreshold": "Toast Threshold (default 5%)",
+        "toastThresholdDesc": "Ipakita ang toast notification",
+        "modalThreshold": "Modal Threshold (default 10%)",
+        "modalThresholdDesc": "Ipakita ang detalyadong alert modal",
+        "saveButton": "I-save ang Mga Setting",
+        "saved": "\u2705 Nai-save ang mga setting!",
+        "emailLabel": "Email",
+        "emailNotVerified": "\u26a0\ufe0f Hindi pa na-verify ang email",
+        "emailNotVerifiedDesc": "I-verify ang iyong email para i-enable ang trading.",
+        "resendVerification": "Muling Ipadala ang Verification Email",
+        "resendCooldown": "Muling ipadala sa {seconds}s",
+        "sending": "Nagpapadala..."
+    },
+    "account": {
+        "title": "Aking Account",
+        "demoBalance": "Demo Balance",
+        "realBalance": "Tunay na Balance",
+        "tradeHistory": "Kasaysayan ng Trade",
+        "noHistory": "Wala pang kasaysayan ng trade",
+        "signOut": "Mag-sign Out"
+    },
+    "offers": {
+        "title": "Lahat ng Trading Asset",
+        "commodities": "Mga Kalakal",
+        "stocks": "Mga Stock",
+        "crypto": "Crypto",
+        "forex": "Forex"
+    },
+    "bot": {
+        "title": "Auto Trading Bot",
+        "desc": "Awtomatikong trading bot, malapit nang dumating.",
+        "comingSoon": "Malapit Nang Dumating"
+    },
+    "support": {
+        "title": "Suporta",
+        "liveChat": "Live Chat",
+        "liveChatDesc": "Makipag-chat nang direkta sa aming support team",
+        "liveChatAction": "Magsimula ng Chat",
+        "email": "Email Support",
+        "emailDesc": "support@canonsite.com",
+        "emailAction": "Magpadala ng Email",
+        "guide": "Gabay sa Trading",
+        "guideDesc": "Matuto ng epektibong mga estratehiya sa trading",
+        "guideAction": "Basahin ang Gabay",
+        "faq": "FAQ",
+        "faqDesc": "Mga madalas na tanong",
+        "faqAction": "Tingnan ang FAQ"
+    },
+    "trade": {
+        "won": "\ud83c\udfc6 NANALO!",
+        "lost": "\ud83d\ude14 NATALO",
+        "closingIn": "Magsasara sa {seconds}s",
+        "confirmTitle": "Kumpirmahin ang Trade",
+        "confirmDesc": "{direction} {asset} ng ${amount} ({duration})",
+        "cancel": "Kanselahin",
+        "buyLabel": "BILHIN",
+        "sellLabel": "IBENTA"
+    },
+    "priceAlert": {
+        "significantChange": "Malaking Pagbabago ng Presyo!",
+        "previousPrice": "Nakaraang Presyo",
+        "currentPrice": "Kasalukuyang Presyo",
+        "change": "Pagbabago",
+        "dismiss": "Balewalain",
+        "tradeNow": "Mag-trade Ngayon",
+        "up": "pataas",
+        "down": "pababa"
+    },
+    "priceStatus": {
+        "expired": "Nag-expire ang Presyo",
+        "delayed": "Naantala ang Presyo",
+        "invalid": "Hindi Valid ang Presyo",
+        "refresh": "I-refresh",
+        "ago": "nakalipas"
+    },
+    "emailVerification": {
+        "verified": "\u2705 Na-verify ang email! Maaari ka nang mag-trade.",
+        "banner": "\u26a0\ufe0f Hindi pa na-verify ang iyong email. Mangyaring i-verify para i-enable ang trading.",
+        "resend": "Muling Ipadala"
+    },
+    "help": {
+        "title": "Mabilis na Tulong",
+        "step1": "1. Pumili ng asset mula sa itaas na bar",
+        "step2": "2. Itakda ang tagal at halaga",
+        "step3": "3. I-click ang IBENTA o BILHIN para buksan ang trade",
+        "step4": "4. Hintayin matapos ang countdown"
+    },
+    "language": {
+        "select": "Wika"
+    },
+    "tradeHistory": {
+        "won": "NANALO",
+        "lost": "NATALO",
+        "active": "AKTIBO"
+    }
+}

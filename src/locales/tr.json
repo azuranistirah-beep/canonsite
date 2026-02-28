@@ -1,0 +1,185 @@
+{
+    "topBar": {
+        "demoAccount": "Demo Hesap",
+        "realAccount": "Ger\u00e7ek Hesap",
+        "deposit": "Para Yat\u0131r",
+        "balance": "Bakiye"
+    },
+    "secondBar": {
+        "searchAssets": "Varl\u0131k Ara",
+        "settings": "Ayarlar",
+        "allAssets": "T\u00fcm Varl\u0131klar",
+        "payout": "\u00d6deme"
+    },
+    "tradePanel": {
+        "duration": "S\u00fcre",
+        "amount": "Miktar",
+        "sell": "SAT",
+        "buy": "AL",
+        "priceUnavailable": "Fiyat mevcut de\u011fil, l\u00fctfen yenileyin",
+        "emailVerificationRequired": "E-posta do\u011frulamas\u0131 gerekli"
+    },
+    "bottomNav": {
+        "platform": "Platform",
+        "offers": "Teklifler",
+        "bot": "Bot",
+        "support": "Destek",
+        "account": "Hesap"
+    },
+    "notifications": {
+        "title": "\u0130\u015flem Bildirimleri",
+        "markAllRead": "T\u00fcm\u00fcn\u00fc okundu olarak i\u015faretle",
+        "noNotifications": "Hen\u00fcz bildirim yok"
+    },
+    "search": {
+        "placeholder": "Varl\u0131k ara (Bitcoin, ETH, Alt\u0131n, EUR/USD...)",
+        "noResults": "\u015eu arama i\u00e7in varl\u0131k bulunamad\u0131:",
+        "allAssets": "T\u00fcm Varl\u0131klar"
+    },
+    "deposit": {
+        "title": "Para Yat\u0131r",
+        "subtitle": "Ger\u00e7ek i\u015flem hesab\u0131n\u0131za bakiye ekleyin",
+        "realAccount": "Ger\u00e7ek Hesap",
+        "realAccountDesc": "Yat\u0131r\u0131mlar Ger\u00e7ek hesap bakiyenize eklenir",
+        "depositAmount": "Yat\u0131r\u0131m Miktar\u0131",
+        "paymentMethod": "\u00d6deme Y\u00f6ntemi",
+        "submitButton": "Para Yat\u0131rma Talebini G\u00f6nder",
+        "processing": "\u0130\u015fleniyor...",
+        "successTitle": "Talep G\u00f6nderildi!",
+        "close": "Kapat",
+        "minimumDeposit": "Minimum yat\u0131r\u0131m",
+        "loadingRates": "D\u00f6viz kurlar\u0131 y\u00fckleniyor...",
+        "bankTransfer": "Banka Havalesi",
+        "bankTransferInfo": "BCA: 1234567890 a.n. PT Investoft Indonesia",
+        "creditCard": "Kredi Kart\u0131",
+        "creditCardInfo": "Visa / Mastercard \u2014 5 dakika i\u00e7inde otomatik i\u015flenir",
+        "crypto": "Kripto Para",
+        "cryptoInfo": "BTC: bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
+        "availablePaymentMethods": "Mevcut \u00f6deme y\u00f6ntemleri",
+        "secureStripe": "Stripe ile G\u00fcvenli \u00d6deme",
+        "secureStripeDesc": "256-bit SSL \u015fifrelemesi \u00b7 PCI DSS uyumlu \u00b7 An\u0131nda bakiye g\u00fcncelleme",
+        "pm_card": "Kredi / Banka Kart\u0131",
+        "pm_fpx": "FPX \u00c7evrimi\u00e7i Bankac\u0131l\u0131k",
+        "pm_touchngo": "Touch 'n Go eWallet",
+        "pm_grabpay": "GrabPay",
+        "pm_paynow": "PayNow",
+        "pm_promptpay": "PromptPay",
+        "pm_gcash": "GCash",
+        "pm_paymaya": "PayMaya",
+        "pm_alipay": "Alipay",
+        "pm_wechatpay": "WeChat Pay"
+    },
+    "settings": {
+        "title": "Ayarlar",
+        "chartTab": "\ud83d\udcc8 Grafik",
+        "accountTab": "\ud83d\udc64 Hesap",
+        "tradingTab": "\u2699\ufe0f \u0130\u015flem",
+        "chartTheme": "Grafik Temas\u0131",
+        "chartThemeDesc": "Koyu veya a\u00e7\u0131k grafik arka plan\u0131",
+        "dark": "Koyu",
+        "light": "A\u00e7\u0131k",
+        "defaultTimeframe": "Varsay\u0131lan Zaman Dilimi",
+        "defaultTimeframeDesc": "A\u00e7\u0131ld\u0131\u011f\u0131nda grafik zaman dilimi",
+        "defaultAmount": "Varsay\u0131lan \u0130\u015flem Miktar\u0131",
+        "defaultAmountDesc": "Her i\u015flem i\u00e7in ba\u015flang\u0131\u00e7 miktar\u0131",
+        "autoConfirm": "Otomatik Onay",
+        "autoConfirmDesc": "Onay ileti\u015fim kutusunu atla",
+        "notifications": "Bildirimler",
+        "notificationsDesc": "\u0130\u015flem sonucu bildirimleri",
+        "priceAlerts": "Fiyat Uyar\u0131s\u0131 Ayarlar\u0131",
+        "toastThreshold": "Toast E\u015fi\u011fi (varsay\u0131lan %5)",
+        "toastThresholdDesc": "Toast bildirimi g\u00f6ster",
+        "modalThreshold": "Modal E\u015fi\u011fi (varsay\u0131lan %10)",
+        "modalThresholdDesc": "Ayr\u0131nt\u0131l\u0131 uyar\u0131 modal\u0131 g\u00f6ster",
+        "saveButton": "Ayarlar\u0131 Kaydet",
+        "saved": "\u2705 Ayarlar kaydedildi!",
+        "emailLabel": "E-posta",
+        "emailNotVerified": "\u26a0\ufe0f E-posta do\u011frulanmad\u0131",
+        "emailNotVerifiedDesc": "\u0130\u015flemi etkinle\u015ftirmek i\u00e7in e-postan\u0131z\u0131 do\u011frulay\u0131n.",
+        "resendVerification": "Do\u011frulama E-postas\u0131n\u0131 Yeniden G\u00f6nder",
+        "resendCooldown": "{seconds}s i\u00e7inde yeniden g\u00f6nder",
+        "sending": "G\u00f6nderiliyor..."
+    },
+    "account": {
+        "title": "Hesab\u0131m",
+        "demoBalance": "Demo Bakiyesi",
+        "realBalance": "Ger\u00e7ek Bakiye",
+        "tradeHistory": "\u0130\u015flem Ge\u00e7mi\u015fi",
+        "noHistory": "Hen\u00fcz i\u015flem ge\u00e7mi\u015fi yok",
+        "signOut": "\u00c7\u0131k\u0131\u015f Yap"
+    },
+    "offers": {
+        "title": "T\u00fcm \u0130\u015flem Varl\u0131klar\u0131",
+        "commodities": "Emtialar",
+        "stocks": "Hisseler",
+        "crypto": "Kripto",
+        "forex": "Forex"
+    },
+    "bot": {
+        "title": "Otomatik \u0130\u015flem Botu",
+        "desc": "Otomatik i\u015flem botu yak\u0131nda geliyor.",
+        "comingSoon": "Yak\u0131nda"
+    },
+    "support": {
+        "title": "Destek",
+        "liveChat": "Canl\u0131 Sohbet",
+        "liveChatDesc": "Destek ekibimizle do\u011frudan sohbet edin",
+        "liveChatAction": "Sohbet Ba\u015flat",
+        "email": "E-posta Deste\u011fi",
+        "emailDesc": "support@canonsite.com",
+        "emailAction": "E-posta G\u00f6nder",
+        "guide": "\u0130\u015flem Rehberi",
+        "guideDesc": "Etkili i\u015flem stratejilerini \u00f6\u011frenin",
+        "guideAction": "Rehberi Oku",
+        "faq": "SSS",
+        "faqDesc": "S\u0131k sorulan sorular",
+        "faqAction": "SSS'yi G\u00f6r\u00fcnt\u00fcle"
+    },
+    "trade": {
+        "won": "\ud83c\udfc6 KAZANDIN!",
+        "lost": "\ud83d\ude14 KAYBETT\u0130N",
+        "closingIn": "{seconds}s i\u00e7inde kapan\u0131yor",
+        "confirmTitle": "\u0130\u015flemi Onayla",
+        "confirmDesc": "{direction} {asset} ${amount} i\u00e7in ({duration})",
+        "cancel": "\u0130ptal",
+        "buyLabel": "AL",
+        "sellLabel": "SAT"
+    },
+    "priceAlert": {
+        "significantChange": "\u00d6nemli Fiyat De\u011fi\u015fikli\u011fi!",
+        "previousPrice": "\u00d6nceki Fiyat",
+        "currentPrice": "Mevcut Fiyat",
+        "change": "De\u011fi\u015fim",
+        "dismiss": "Yoksay",
+        "tradeNow": "\u015eimdi \u0130\u015flem Yap",
+        "up": "y\u00fckseldi",
+        "down": "d\u00fc\u015ft\u00fc"
+    },
+    "priceStatus": {
+        "expired": "Fiyat S\u00fcresi Doldu",
+        "delayed": "Fiyat Gecikmeli",
+        "invalid": "Ge\u00e7ersiz Fiyat",
+        "refresh": "Yenile",
+        "ago": "\u00f6nce"
+    },
+    "emailVerification": {
+        "verified": "\u2705 E-posta do\u011fruland\u0131! Art\u0131k i\u015flem yapabilirsiniz.",
+        "banner": "\u26a0\ufe0f E-postan\u0131z do\u011frulanmad\u0131. \u0130\u015flemi etkinle\u015ftirmek i\u00e7in l\u00fctfen do\u011frulay\u0131n.",
+        "resend": "Yeniden G\u00f6nder"
+    },
+    "help": {
+        "title": "H\u0131zl\u0131 Yard\u0131m",
+        "step1": "1. \u00dcst \u00e7ubuktan bir varl\u0131k se\u00e7in",
+        "step2": "2. S\u00fcre ve miktar\u0131 ayarlay\u0131n",
+        "step3": "3. \u0130\u015flem a\u00e7mak i\u00e7in SAT veya AL'a t\u0131klay\u0131n",
+        "step4": "4. Geri say\u0131m\u0131n bitmesini bekleyin"
+    },
+    "language": {
+        "select": "Dil"
+    },
+    "tradeHistory": {
+        "won": "KAZANILDI",
+        "lost": "KAYBED\u0130LD\u0130",
+        "active": "AKT\u0130F"
+    }
+}

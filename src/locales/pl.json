@@ -1,0 +1,185 @@
+{
+    "topBar": {
+        "demoAccount": "Konto Demo",
+        "realAccount": "Konto Rzeczywiste",
+        "deposit": "Wp\u0142ata",
+        "balance": "Saldo"
+    },
+    "secondBar": {
+        "searchAssets": "Szukaj Aktyw\u00f3w",
+        "settings": "Ustawienia",
+        "allAssets": "Wszystkie Aktywa",
+        "payout": "Wyp\u0142ata"
+    },
+    "tradePanel": {
+        "duration": "Czas Trwania",
+        "amount": "Kwota",
+        "sell": "SPRZEDAJ",
+        "buy": "KUP",
+        "priceUnavailable": "Cena niedost\u0119pna, od\u015bwie\u017c",
+        "emailVerificationRequired": "Wymagana weryfikacja e-mail"
+    },
+    "bottomNav": {
+        "platform": "Platforma",
+        "offers": "Oferty",
+        "bot": "Bot",
+        "support": "Wsparcie",
+        "account": "Konto"
+    },
+    "notifications": {
+        "title": "Powiadomienia Handlowe",
+        "markAllRead": "Oznacz wszystkie jako przeczytane",
+        "noNotifications": "Brak powiadomie\u0144"
+    },
+    "search": {
+        "placeholder": "Szukaj aktyw\u00f3w (Bitcoin, ETH, Z\u0142oto, EUR/USD...)",
+        "noResults": "Nie znaleziono aktyw\u00f3w dla",
+        "allAssets": "Wszystkie Aktywa"
+    },
+    "deposit": {
+        "title": "Wp\u0142a\u0107 \u015arodki",
+        "subtitle": "Dodaj saldo do swojego Rzeczywistego konta handlowego",
+        "realAccount": "Konto Rzeczywiste",
+        "realAccountDesc": "Wp\u0142aty s\u0105 uznawane na saldzie Twojego Rzeczywistego konta",
+        "depositAmount": "Kwota Wp\u0142aty",
+        "paymentMethod": "Metoda P\u0142atno\u015bci",
+        "submitButton": "Wy\u015blij Wniosek o Wp\u0142at\u0119",
+        "processing": "Przetwarzanie...",
+        "successTitle": "Wniosek Wys\u0142any!",
+        "close": "Zamknij",
+        "minimumDeposit": "Minimalna wp\u0142ata to",
+        "loadingRates": "\u0141adowanie kurs\u00f3w wymiany...",
+        "bankTransfer": "Przelew Bankowy",
+        "bankTransferInfo": "BCA: 1234567890 a.n. PT Investoft Indonesia",
+        "creditCard": "Karta Kredytowa",
+        "creditCardInfo": "Visa / Mastercard \u2014 przetwarzane automatycznie w ci\u0105gu 5 minut",
+        "crypto": "Kryptowaluta",
+        "cryptoInfo": "BTC: bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
+        "availablePaymentMethods": "Dost\u0119pne metody p\u0142atno\u015bci",
+        "secureStripe": "Bezpieczna p\u0142atno\u015b\u0107 przez Stripe",
+        "secureStripeDesc": "Szyfrowanie SSL 256-bit \u00b7 Zgodno\u015b\u0107 PCI DSS \u00b7 Natychmiastowa aktualizacja",
+        "pm_card": "Karta kredytowa / debetowa",
+        "pm_fpx": "Bankowo\u015b\u0107 internetowa FPX",
+        "pm_touchngo": "Touch 'n Go eWallet",
+        "pm_grabpay": "GrabPay",
+        "pm_paynow": "PayNow",
+        "pm_promptpay": "PromptPay",
+        "pm_gcash": "GCash",
+        "pm_paymaya": "PayMaya",
+        "pm_alipay": "Alipay",
+        "pm_wechatpay": "WeChat Pay"
+    },
+    "settings": {
+        "title": "Ustawienia",
+        "chartTab": "\ud83d\udcc8 Wykres",
+        "accountTab": "\ud83d\udc64 Konto",
+        "tradingTab": "\u2699\ufe0f Handel",
+        "chartTheme": "Motyw Wykresu",
+        "chartThemeDesc": "Ciemne lub jasne t\u0142o wykresu",
+        "dark": "Ciemny",
+        "light": "Jasny",
+        "defaultTimeframe": "Domy\u015blny Przedzia\u0142 Czasowy",
+        "defaultTimeframeDesc": "Przedzia\u0142 czasowy wykresu przy otwarciu",
+        "defaultAmount": "Domy\u015blna Kwota Transakcji",
+        "defaultAmountDesc": "Pocz\u0105tkowa kwota dla ka\u017cdej transakcji",
+        "autoConfirm": "Automatyczne Potwierdzenie",
+        "autoConfirmDesc": "Pomi\u0144 okno dialogowe potwierdzenia",
+        "notifications": "Powiadomienia",
+        "notificationsDesc": "Powiadomienia o wynikach handlu",
+        "priceAlerts": "Ustawienia Alert\u00f3w Cenowych",
+        "toastThreshold": "Pr\u00f3g Toast (domy\u015blnie 5%)",
+        "toastThresholdDesc": "Poka\u017c powiadomienie toast",
+        "modalThreshold": "Pr\u00f3g Modal (domy\u015blnie 10%)",
+        "modalThresholdDesc": "Poka\u017c szczeg\u00f3\u0142owy modal alertu",
+        "saveButton": "Zapisz Ustawienia",
+        "saved": "\u2705 Ustawienia zapisane!",
+        "emailLabel": "E-mail",
+        "emailNotVerified": "\u26a0\ufe0f E-mail nie zweryfikowany",
+        "emailNotVerifiedDesc": "Zweryfikuj sw\u00f3j e-mail, aby aktywowa\u0107 handel.",
+        "resendVerification": "Wy\u015blij Ponownie E-mail Weryfikacyjny",
+        "resendCooldown": "Wy\u015blij ponownie za {seconds}s",
+        "sending": "Wysy\u0142anie..."
+    },
+    "account": {
+        "title": "Moje Konto",
+        "demoBalance": "Saldo Demo",
+        "realBalance": "Saldo Rzeczywiste",
+        "tradeHistory": "Historia Transakcji",
+        "noHistory": "Brak historii transakcji",
+        "signOut": "Wyloguj"
+    },
+    "offers": {
+        "title": "Wszystkie Aktywa Handlowe",
+        "commodities": "Surowce",
+        "stocks": "Akcje",
+        "crypto": "Krypto",
+        "forex": "Forex"
+    },
+    "bot": {
+        "title": "Automatyczny Bot Handlowy",
+        "desc": "Automatyczny bot handlowy wkr\u00f3tce.",
+        "comingSoon": "Wkr\u00f3tce"
+    },
+    "support": {
+        "title": "Wsparcie",
+        "liveChat": "Czat na \u017bywo",
+        "liveChatDesc": "Rozmawiaj bezpo\u015brednio z naszym zespo\u0142em wsparcia",
+        "liveChatAction": "Rozpocznij Czat",
+        "email": "Wsparcie E-mail",
+        "emailDesc": "support@canonsite.com",
+        "emailAction": "Wy\u015blij E-mail",
+        "guide": "Przewodnik Handlowy",
+        "guideDesc": "Naucz si\u0119 skutecznych strategii handlowych",
+        "guideAction": "Czytaj Przewodnik",
+        "faq": "FAQ",
+        "faqDesc": "Cz\u0119sto zadawane pytania",
+        "faqAction": "Zobacz FAQ"
+    },
+    "trade": {
+        "won": "\ud83c\udfc6 WYGRA\u0141E\u015a!",
+        "lost": "\ud83d\ude14 PRZEGRA\u0141E\u015a",
+        "closingIn": "Zamkni\u0119cie za {seconds}s",
+        "confirmTitle": "Potwierd\u017a Transakcj\u0119",
+        "confirmDesc": "{direction} {asset} za ${amount} ({duration})",
+        "cancel": "Anuluj",
+        "buyLabel": "KUP",
+        "sellLabel": "SPRZEDAJ"
+    },
+    "priceAlert": {
+        "significantChange": "Znaczna Zmiana Ceny!",
+        "previousPrice": "Poprzednia Cena",
+        "currentPrice": "Aktualna Cena",
+        "change": "Zmiana",
+        "dismiss": "Odrzu\u0107",
+        "tradeNow": "Handluj Teraz",
+        "up": "wzros\u0142a",
+        "down": "spad\u0142a"
+    },
+    "priceStatus": {
+        "expired": "Cena Wygas\u0142a",
+        "delayed": "Cena Op\u00f3\u017aniona",
+        "invalid": "Nieprawid\u0142owa Cena",
+        "refresh": "Od\u015bwie\u017c",
+        "ago": "temu"
+    },
+    "emailVerification": {
+        "verified": "\u2705 E-mail zweryfikowany! Mo\u017cesz teraz handlowa\u0107.",
+        "banner": "\u26a0\ufe0f Tw\u00f3j e-mail nie jest zweryfikowany. Zweryfikuj, aby aktywowa\u0107 handel.",
+        "resend": "Wy\u015blij Ponownie"
+    },
+    "help": {
+        "title": "Szybka Pomoc",
+        "step1": "1. Wybierz aktywo z g\u00f3rnego paska",
+        "step2": "2. Ustaw czas trwania i kwot\u0119",
+        "step3": "3. Kliknij SPRZEDAJ lub KUP, aby otworzy\u0107 transakcj\u0119",
+        "step4": "4. Poczekaj na zako\u0144czenie odliczania"
+    },
+    "language": {
+        "select": "J\u0119zyk"
+    },
+    "tradeHistory": {
+        "won": "WYGRANA",
+        "lost": "PRZEGRANA",
+        "active": "AKTYWNA"
+    }
+}

@@ -1,0 +1,185 @@
+{
+    "topBar": {
+        "demoAccount": "T\u00e0i Kho\u1ea3n Demo",
+        "realAccount": "T\u00e0i Kho\u1ea3n Th\u1eadt",
+        "deposit": "N\u1ea1p Ti\u1ec1n",
+        "balance": "S\u1ed1 D\u01b0"
+    },
+    "secondBar": {
+        "searchAssets": "T\u00ecm Ki\u1ebfm T\u00e0i S\u1ea3n",
+        "settings": "C\u00e0i \u0110\u1eb7t",
+        "allAssets": "T\u1ea5t C\u1ea3 T\u00e0i S\u1ea3n",
+        "payout": "L\u1ee3i Nhu\u1eadn"
+    },
+    "tradePanel": {
+        "duration": "Th\u1eddi Gian",
+        "amount": "S\u1ed1 Ti\u1ec1n",
+        "sell": "B\u00c1N",
+        "buy": "MUA",
+        "priceUnavailable": "Gi\u00e1 kh\u00f4ng kh\u1ea3 d\u1ee5ng, vui l\u00f2ng l\u00e0m m\u1edbi",
+        "emailVerificationRequired": "Y\u00eau c\u1ea7u x\u00e1c minh email"
+    },
+    "bottomNav": {
+        "platform": "N\u1ec1n T\u1ea3ng",
+        "offers": "\u01afu \u0110\u00e3i",
+        "bot": "Bot",
+        "support": "H\u1ed7 Tr\u1ee3",
+        "account": "T\u00e0i Kho\u1ea3n"
+    },
+    "notifications": {
+        "title": "Th\u00f4ng B\u00e1o Giao D\u1ecbch",
+        "markAllRead": "\u0110\u00e1nh d\u1ea5u t\u1ea5t c\u1ea3 \u0111\u00e3 \u0111\u1ecdc",
+        "noNotifications": "Ch\u01b0a c\u00f3 th\u00f4ng b\u00e1o"
+    },
+    "search": {
+        "placeholder": "T\u00ecm ki\u1ebfm t\u00e0i s\u1ea3n (Bitcoin, ETH, V\u00e0ng, EUR/USD...)",
+        "noResults": "Kh\u00f4ng t\u00ecm th\u1ea5y t\u00e0i s\u1ea3n cho",
+        "allAssets": "T\u1ea5t C\u1ea3 T\u00e0i S\u1ea3n"
+    },
+    "deposit": {
+        "title": "N\u1ea1p Ti\u1ec1n",
+        "subtitle": "Th\u00eam s\u1ed1 d\u01b0 v\u00e0o t\u00e0i kho\u1ea3n giao d\u1ecbch Th\u1eadt c\u1ee7a b\u1ea1n",
+        "realAccount": "T\u00e0i Kho\u1ea3n Th\u1eadt",
+        "realAccountDesc": "Ti\u1ec1n n\u1ea1p \u0111\u01b0\u1ee3c ghi c\u00f3 v\u00e0o s\u1ed1 d\u01b0 t\u00e0i kho\u1ea3n Th\u1eadt c\u1ee7a b\u1ea1n",
+        "depositAmount": "S\u1ed1 Ti\u1ec1n N\u1ea1p",
+        "paymentMethod": "Ph\u01b0\u01a1ng Th\u1ee9c Thanh To\u00e1n",
+        "submitButton": "G\u1eedi Y\u00eau C\u1ea7u N\u1ea1p Ti\u1ec1n",
+        "processing": "\u0110ang x\u1eed l\u00fd...",
+        "successTitle": "Y\u00eau C\u1ea7u \u0110\u00e3 G\u1eedi!",
+        "close": "\u0110\u00f3ng",
+        "minimumDeposit": "S\u1ed1 ti\u1ec1n n\u1ea1p t\u1ed1i thi\u1ec3u l\u00e0",
+        "loadingRates": "\u0110ang t\u1ea3i t\u1ef7 gi\u00e1...",
+        "bankTransfer": "Chuy\u1ec3n Kho\u1ea3n Ng\u00e2n H\u00e0ng",
+        "bankTransferInfo": "BCA: 1234567890 a.n. PT Investoft Indonesia",
+        "creditCard": "Th\u1ebb T\u00edn D\u1ee5ng",
+        "creditCardInfo": "Visa / Mastercard \u2014 x\u1eed l\u00fd t\u1ef1 \u0111\u1ed9ng trong 5 ph\u00fat",
+        "crypto": "Ti\u1ec1n \u0110i\u1ec7n T\u1eed",
+        "cryptoInfo": "BTC: bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
+        "availablePaymentMethods": "Ph\u01b0\u01a1ng th\u1ee9c thanh to\u00e1n c\u00f3 s\u1eb5n",
+        "secureStripe": "Thanh to\u00e1n an to\u00e0n qua Stripe",
+        "secureStripeDesc": "M\u00e3 h\u00f3a SSL 256-bit \u00b7 Tu\u00e2n th\u1ee7 PCI DSS \u00b7 C\u1eadp nh\u1eadt s\u1ed1 d\u01b0 ngay l\u1eadp t\u1ee9c",
+        "pm_card": "Th\u1ebb t\u00edn d\u1ee5ng / ghi n\u1ee3",
+        "pm_fpx": "Ng\u00e2n h\u00e0ng tr\u1ef1c tuy\u1ebfn FPX",
+        "pm_touchngo": "Touch 'n Go eWallet",
+        "pm_grabpay": "GrabPay",
+        "pm_paynow": "PayNow",
+        "pm_promptpay": "PromptPay",
+        "pm_gcash": "GCash",
+        "pm_paymaya": "PayMaya",
+        "pm_alipay": "Alipay",
+        "pm_wechatpay": "WeChat Pay"
+    },
+    "settings": {
+        "title": "C\u00e0i \u0110\u1eb7t",
+        "chartTab": "\ud83d\udcc8 Bi\u1ec3u \u0110\u1ed3",
+        "accountTab": "\ud83d\udc64 T\u00e0i Kho\u1ea3n",
+        "tradingTab": "\u2699\ufe0f Giao D\u1ecbch",
+        "chartTheme": "Ch\u1ee7 \u0110\u1ec1 Bi\u1ec3u \u0110\u1ed3",
+        "chartThemeDesc": "N\u1ec1n bi\u1ec3u \u0111\u1ed3 t\u1ed1i ho\u1eb7c s\u00e1ng",
+        "dark": "T\u1ed1i",
+        "light": "S\u00e1ng",
+        "defaultTimeframe": "Khung Th\u1eddi Gian M\u1eb7c \u0110\u1ecbnh",
+        "defaultTimeframeDesc": "Khung th\u1eddi gian bi\u1ec3u \u0111\u1ed3 khi m\u1edf",
+        "defaultAmount": "S\u1ed1 Ti\u1ec1n Giao D\u1ecbch M\u1eb7c \u0110\u1ecbnh",
+        "defaultAmountDesc": "S\u1ed1 ti\u1ec1n ban \u0111\u1ea7u cho m\u1ed7i giao d\u1ecbch",
+        "autoConfirm": "T\u1ef1 \u0110\u1ed9ng X\u00e1c Nh\u1eadn",
+        "autoConfirmDesc": "B\u1ecf qua h\u1ed9p tho\u1ea1i x\u00e1c nh\u1eadn",
+        "notifications": "Th\u00f4ng B\u00e1o",
+        "notificationsDesc": "Th\u00f4ng b\u00e1o k\u1ebft qu\u1ea3 giao d\u1ecbch",
+        "priceAlerts": "C\u00e0i \u0110\u1eb7t C\u1ea3nh B\u00e1o Gi\u00e1",
+        "toastThreshold": "Ng\u01b0\u1ee1ng Toast (m\u1eb7c \u0111\u1ecbnh 5%)",
+        "toastThresholdDesc": "Hi\u1ec3n th\u1ecb th\u00f4ng b\u00e1o toast",
+        "modalThreshold": "Ng\u01b0\u1ee1ng Modal (m\u1eb7c \u0111\u1ecbnh 10%)",
+        "modalThresholdDesc": "Hi\u1ec3n th\u1ecb modal c\u1ea3nh b\u00e1o chi ti\u1ebft",
+        "saveButton": "L\u01b0u C\u00e0i \u0110\u1eb7t",
+        "saved": "\u2705 C\u00e0i \u0111\u1eb7t \u0111\u00e3 l\u01b0u!",
+        "emailLabel": "Email",
+        "emailNotVerified": "\u26a0\ufe0f Email ch\u01b0a \u0111\u01b0\u1ee3c x\u00e1c minh",
+        "emailNotVerifiedDesc": "X\u00e1c minh email c\u1ee7a b\u1ea1n \u0111\u1ec3 k\u00edch ho\u1ea1t giao d\u1ecbch.",
+        "resendVerification": "G\u1eedi L\u1ea1i Email X\u00e1c Minh",
+        "resendCooldown": "G\u1eedi l\u1ea1i sau {seconds}s",
+        "sending": "\u0110ang g\u1eedi..."
+    },
+    "account": {
+        "title": "T\u00e0i Kho\u1ea3n C\u1ee7a T\u00f4i",
+        "demoBalance": "S\u1ed1 D\u01b0 Demo",
+        "realBalance": "S\u1ed1 D\u01b0 Th\u1eadt",
+        "tradeHistory": "L\u1ecbch S\u1eed Giao D\u1ecbch",
+        "noHistory": "Ch\u01b0a c\u00f3 l\u1ecbch s\u1eed giao d\u1ecbch",
+        "signOut": "\u0110\u0103ng Xu\u1ea5t"
+    },
+    "offers": {
+        "title": "T\u1ea5t C\u1ea3 T\u00e0i S\u1ea3n Giao D\u1ecbch",
+        "commodities": "H\u00e0ng H\u00f3a",
+        "stocks": "C\u1ed5 Phi\u1ebfu",
+        "crypto": "Ti\u1ec1n \u0110i\u1ec7n T\u1eed",
+        "forex": "Ngo\u1ea1i H\u1ed1i"
+    },
+    "bot": {
+        "title": "Bot Giao D\u1ecbch T\u1ef1 \u0110\u1ed9ng",
+        "desc": "Bot giao d\u1ecbch t\u1ef1 \u0111\u1ed9ng s\u1eafp ra m\u1eaft.",
+        "comingSoon": "S\u1eafp Ra M\u1eaft"
+    },
+    "support": {
+        "title": "H\u1ed7 Tr\u1ee3",
+        "liveChat": "Chat Tr\u1ef1c Ti\u1ebfp",
+        "liveChatDesc": "Chat tr\u1ef1c ti\u1ebfp v\u1edbi \u0111\u1ed9i h\u1ed7 tr\u1ee3 c\u1ee7a ch\u00fang t\u00f4i",
+        "liveChatAction": "B\u1eaft \u0110\u1ea7u Chat",
+        "email": "H\u1ed7 Tr\u1ee3 Email",
+        "emailDesc": "support@canonsite.com",
+        "emailAction": "G\u1eedi Email",
+        "guide": "H\u01b0\u1edbng D\u1eabn Giao D\u1ecbch",
+        "guideDesc": "H\u1ecdc c\u00e1c chi\u1ebfn l\u01b0\u1ee3c giao d\u1ecbch hi\u1ec7u qu\u1ea3",
+        "guideAction": "\u0110\u1ecdc H\u01b0\u1edbng D\u1eabn",
+        "faq": "C\u00e2u H\u1ecfi Th\u01b0\u1eddng G\u1eb7p",
+        "faqDesc": "C\u00e1c c\u00e2u h\u1ecfi th\u01b0\u1eddng \u0111\u01b0\u1ee3c h\u1ecfi",
+        "faqAction": "Xem FAQ"
+    },
+    "trade": {
+        "won": "\ud83c\udfc6 TH\u1eaeNG!",
+        "lost": "\ud83d\ude14 THUA",
+        "closingIn": "\u0110\u00f3ng sau {seconds}s",
+        "confirmTitle": "X\u00e1c Nh\u1eadn Giao D\u1ecbch",
+        "confirmDesc": "{direction} {asset} v\u1edbi ${amount} ({duration})",
+        "cancel": "H\u1ee7y",
+        "buyLabel": "MUA",
+        "sellLabel": "B\u00c1N"
+    },
+    "priceAlert": {
+        "significantChange": "Bi\u1ebfn \u0110\u1ed9ng Gi\u00e1 \u0110\u00e1ng K\u1ec3!",
+        "previousPrice": "Gi\u00e1 Tr\u01b0\u1edbc",
+        "currentPrice": "Gi\u00e1 Hi\u1ec7n T\u1ea1i",
+        "change": "Thay \u0110\u1ed5i",
+        "dismiss": "B\u1ecf Qua",
+        "tradeNow": "Giao D\u1ecbch Ngay",
+        "up": "t\u0103ng",
+        "down": "gi\u1ea3m"
+    },
+    "priceStatus": {
+        "expired": "Gi\u00e1 H\u1ebft H\u1ea1n",
+        "delayed": "Gi\u00e1 B\u1ecb Tr\u1ec5",
+        "invalid": "Gi\u00e1 Kh\u00f4ng H\u1ee3p L\u1ec7",
+        "refresh": "L\u00e0m M\u1edbi",
+        "ago": "tr\u01b0\u1edbc"
+    },
+    "emailVerification": {
+        "verified": "\u2705 Email \u0111\u00e3 x\u00e1c minh! B\u1ea1n c\u00f3 th\u1ec3 giao d\u1ecbch ngay.",
+        "banner": "\u26a0\ufe0f Email c\u1ee7a b\u1ea1n ch\u01b0a \u0111\u01b0\u1ee3c x\u00e1c minh. Vui l\u00f2ng x\u00e1c minh \u0111\u1ec3 k\u00edch ho\u1ea1t giao d\u1ecbch.",
+        "resend": "G\u1eedi L\u1ea1i"
+    },
+    "help": {
+        "title": "Tr\u1ee3 Gi\u00fap Nhanh",
+        "step1": "1. Ch\u1ecdn t\u00e0i s\u1ea3n t\u1eeb thanh tr\u00ean",
+        "step2": "2. \u0110\u1eb7t th\u1eddi gian v\u00e0 s\u1ed1 ti\u1ec1n",
+        "step3": "3. Nh\u1ea5n B\u00c1N ho\u1eb7c MUA \u0111\u1ec3 m\u1edf giao d\u1ecbch",
+        "step4": "4. Ch\u1edd \u0111\u1ebfm ng\u01b0\u1ee3c k\u1ebft th\u00fac"
+    },
+    "language": {
+        "select": "Ng\u00f4n Ng\u1eef"
+    },
+    "tradeHistory": {
+        "won": "TH\u1eaeNG",
+        "lost": "THUA",
+        "active": "\u0110ANG HO\u1ea0T \u0110\u1ed8NG"
+    }
+}

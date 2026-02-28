@@ -1,0 +1,185 @@
+{
+    "topBar": {
+        "demoAccount": "Demo Account",
+        "realAccount": "Real Account",
+        "deposit": "Deposit",
+        "balance": "Balance"
+    },
+    "secondBar": {
+        "searchAssets": "Search Assets",
+        "settings": "Settings",
+        "allAssets": "All Assets",
+        "payout": "Payout"
+    },
+    "tradePanel": {
+        "duration": "Duration",
+        "amount": "Amount",
+        "sell": "SELL",
+        "buy": "BUY",
+        "priceUnavailable": "Price unavailable, please refresh",
+        "emailVerificationRequired": "Email verification required"
+    },
+    "bottomNav": {
+        "platform": "Platform",
+        "offers": "Offers",
+        "bot": "Bot",
+        "support": "Support",
+        "account": "Account"
+    },
+    "notifications": {
+        "title": "Trade Notifications",
+        "markAllRead": "Mark all as read",
+        "noNotifications": "No notifications yet"
+    },
+    "search": {
+        "placeholder": "Search assets (Bitcoin, ETH, Gold, EUR/USD...)",
+        "noResults": "No assets found for",
+        "allAssets": "All Assets"
+    },
+    "deposit": {
+        "title": "Deposit Funds",
+        "subtitle": "Add balance to your Real trading account",
+        "realAccount": "Real Account",
+        "realAccountDesc": "Deposits are credited to your Real account balance",
+        "depositAmount": "Deposit Amount",
+        "paymentMethod": "Payment Method",
+        "submitButton": "Submit Deposit Request",
+        "processing": "Processing...",
+        "successTitle": "Request Submitted!",
+        "close": "Close",
+        "minimumDeposit": "Minimum deposit is",
+        "loadingRates": "Loading exchange rates...",
+        "bankTransfer": "Bank Transfer",
+        "bankTransferInfo": "BCA: 1234567890 a.n. PT Investoft Indonesia",
+        "creditCard": "Credit Card",
+        "creditCardInfo": "Visa / Mastercard \u2014 processed automatically within 5 minutes",
+        "crypto": "Cryptocurrency",
+        "cryptoInfo": "BTC: bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
+        "availablePaymentMethods": "Available Payment Methods",
+        "secureStripe": "Secure Payment via Stripe",
+        "secureStripeDesc": "256-bit SSL encryption \u00b7 PCI DSS compliant \u00b7 Instant balance update",
+        "pm_card": "Credit / Debit Card",
+        "pm_fpx": "FPX Online Banking",
+        "pm_touchngo": "Touch 'n Go eWallet",
+        "pm_grabpay": "GrabPay",
+        "pm_paynow": "PayNow",
+        "pm_promptpay": "PromptPay",
+        "pm_gcash": "GCash",
+        "pm_paymaya": "PayMaya",
+        "pm_alipay": "Alipay",
+        "pm_wechatpay": "WeChat Pay"
+    },
+    "settings": {
+        "title": "Settings",
+        "chartTab": "\ud83d\udcc8 Chart",
+        "accountTab": "\ud83d\udc64 Account",
+        "tradingTab": "\u2699\ufe0f Trading",
+        "chartTheme": "Chart Theme",
+        "chartThemeDesc": "Dark or light chart background",
+        "dark": "Dark",
+        "light": "Light",
+        "defaultTimeframe": "Default Timeframe",
+        "defaultTimeframeDesc": "Chart timeframe when opened",
+        "defaultAmount": "Default Trade Amount",
+        "defaultAmountDesc": "Initial amount for each trade",
+        "autoConfirm": "Auto Confirm",
+        "autoConfirmDesc": "Skip confirmation dialog",
+        "notifications": "Notifications",
+        "notificationsDesc": "Trade result notifications",
+        "priceAlerts": "Price Alert Settings",
+        "toastThreshold": "Toast Threshold (default 5%)",
+        "toastThresholdDesc": "Show toast notification",
+        "modalThreshold": "Modal Threshold (default 10%)",
+        "modalThresholdDesc": "Show detailed alert modal",
+        "saveButton": "Save Settings",
+        "saved": "\u2705 Settings saved!",
+        "emailLabel": "Email",
+        "emailNotVerified": "\u26a0\ufe0f Email not verified",
+        "emailNotVerifiedDesc": "Verify your email to enable trading.",
+        "resendVerification": "Resend Verification Email",
+        "resendCooldown": "Resend in {seconds}s",
+        "sending": "Sending..."
+    },
+    "account": {
+        "title": "My Account",
+        "demoBalance": "Demo Balance",
+        "realBalance": "Real Balance",
+        "tradeHistory": "Trade History",
+        "noHistory": "No trade history yet",
+        "signOut": "Sign Out"
+    },
+    "offers": {
+        "title": "All Trading Assets",
+        "commodities": "Commodities",
+        "stocks": "Stocks",
+        "crypto": "Crypto",
+        "forex": "Forex"
+    },
+    "bot": {
+        "title": "Auto Trading Bot",
+        "desc": "Automated trading bot coming soon.",
+        "comingSoon": "Coming Soon"
+    },
+    "support": {
+        "title": "Support",
+        "liveChat": "Live Chat",
+        "liveChatDesc": "Chat directly with our support team",
+        "liveChatAction": "Start Chat",
+        "email": "Email Support",
+        "emailDesc": "support@canonsite.com",
+        "emailAction": "Send Email",
+        "guide": "Trading Guide",
+        "guideDesc": "Learn effective trading strategies",
+        "guideAction": "Read Guide",
+        "faq": "FAQ",
+        "faqDesc": "Frequently asked questions",
+        "faqAction": "View FAQ"
+    },
+    "trade": {
+        "won": "\ud83c\udfc6 WON!",
+        "lost": "\ud83d\ude14 LOST",
+        "closingIn": "Closing in {seconds}s",
+        "confirmTitle": "Confirm Trade",
+        "confirmDesc": "{direction} {asset} for ${amount} ({duration})",
+        "cancel": "Cancel",
+        "buyLabel": "BUY",
+        "sellLabel": "SELL"
+    },
+    "priceAlert": {
+        "significantChange": "Significant Price Change",
+        "previousPrice": "Previous Price",
+        "currentPrice": "Current Price",
+        "change": "Change",
+        "dismiss": "Dismiss",
+        "tradeNow": "Trade Now",
+        "up": "up",
+        "down": "down"
+    },
+    "priceStatus": {
+        "expired": "Price Expired",
+        "delayed": "Price Delayed",
+        "invalid": "Invalid Price",
+        "refresh": "Refresh",
+        "ago": "ago"
+    },
+    "emailVerification": {
+        "verified": "\u2705 Email verified! You can now trade.",
+        "banner": "\u26a0\ufe0f Your email is not verified. Please verify to enable trading.",
+        "resend": "Resend"
+    },
+    "help": {
+        "title": "Quick Help",
+        "step1": "1. Select an asset from the top bar",
+        "step2": "2. Set duration and amount",
+        "step3": "3. Click SELL or BUY to open a trade",
+        "step4": "4. Wait for the countdown to finish"
+    },
+    "language": {
+        "select": "Language"
+    },
+    "tradeHistory": {
+        "won": "WON",
+        "lost": "LOST",
+        "active": "ACTIVE"
+    }
+}

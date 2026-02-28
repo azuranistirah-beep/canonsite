@@ -20,7 +20,7 @@ module.exports = {
         },
       },
       fontFamily: {
-        sans: ['-apple-system', 'BlinkMacSystemFont', '"Trebuchet MS"', 'Roboto', 'Ubuntu', 'sans-serif'],
+        sans: ['var(--font-inter)', 'Inter', '-apple-system', 'BlinkMacSystemFont', 'Roboto', 'sans-serif'],
       },
       animation: {
         'ping-slow': 'ping 2s cubic-bezier(0, 0, 0.2, 1) infinite',

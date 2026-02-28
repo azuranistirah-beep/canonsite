@@ -1,0 +1,185 @@
+{
+    "topBar": {
+        "demoAccount": "Cuenta Demo",
+        "realAccount": "Cuenta Real",
+        "deposit": "Depositar",
+        "balance": "Saldo"
+    },
+    "secondBar": {
+        "searchAssets": "Buscar Activos",
+        "settings": "Configuraci\u00f3n",
+        "allAssets": "Todos los Activos",
+        "payout": "Pago"
+    },
+    "tradePanel": {
+        "duration": "Duraci\u00f3n",
+        "amount": "Monto",
+        "sell": "VENDER",
+        "buy": "COMPRAR",
+        "priceUnavailable": "Precio no disponible, actualice",
+        "emailVerificationRequired": "Se requiere verificaci\u00f3n de email"
+    },
+    "bottomNav": {
+        "platform": "Plataforma",
+        "offers": "Ofertas",
+        "bot": "Bot",
+        "support": "Soporte",
+        "account": "Cuenta"
+    },
+    "notifications": {
+        "title": "Notificaciones de Trading",
+        "markAllRead": "Marcar todo como le\u00eddo",
+        "noNotifications": "Sin notificaciones a\u00fan"
+    },
+    "search": {
+        "placeholder": "Buscar activos (Bitcoin, ETH, Oro, EUR/USD...)",
+        "noResults": "No se encontraron activos para",
+        "allAssets": "Todos los Activos"
+    },
+    "deposit": {
+        "title": "Depositar Fondos",
+        "subtitle": "A\u00f1adir saldo a tu cuenta de trading Real",
+        "realAccount": "Cuenta Real",
+        "realAccountDesc": "Los dep\u00f3sitos se acreditan a tu saldo de cuenta Real",
+        "depositAmount": "Monto del Dep\u00f3sito",
+        "paymentMethod": "M\u00e9todo de Pago",
+        "submitButton": "Enviar Solicitud de Dep\u00f3sito",
+        "processing": "Procesando...",
+        "successTitle": "\u00a1Solicitud Enviada!",
+        "close": "Cerrar",
+        "minimumDeposit": "El dep\u00f3sito m\u00ednimo es",
+        "loadingRates": "Cargando tipos de cambio...",
+        "bankTransfer": "Transferencia Bancaria",
+        "bankTransferInfo": "BCA: 1234567890 a.n. PT Investoft Indonesia",
+        "creditCard": "Tarjeta de Cr\u00e9dito",
+        "creditCardInfo": "Visa / Mastercard \u2014 procesado autom\u00e1ticamente en 5 minutos",
+        "crypto": "Criptomoneda",
+        "cryptoInfo": "BTC: bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
+        "availablePaymentMethods": "M\u00e9todos de pago disponibles",
+        "secureStripe": "Pago seguro v\u00eda Stripe",
+        "secureStripeDesc": "Cifrado SSL de 256 bits \u00b7 Cumple PCI DSS \u00b7 Actualizaci\u00f3n instant\u00e1nea",
+        "pm_card": "Tarjeta de cr\u00e9dito / d\u00e9bito",
+        "pm_fpx": "Banca en l\u00ednea FPX",
+        "pm_touchngo": "Touch 'n Go eWallet",
+        "pm_grabpay": "GrabPay",
+        "pm_paynow": "PayNow",
+        "pm_promptpay": "PromptPay",
+        "pm_gcash": "GCash",
+        "pm_paymaya": "PayMaya",
+        "pm_alipay": "Alipay",
+        "pm_wechatpay": "WeChat Pay"
+    },
+    "settings": {
+        "title": "Configuraci\u00f3n",
+        "chartTab": "\ud83d\udcc8 Gr\u00e1fico",
+        "accountTab": "\ud83d\udc64 Cuenta",
+        "tradingTab": "\u2699\ufe0f Trading",
+        "chartTheme": "Tema del Gr\u00e1fico",
+        "chartThemeDesc": "Fondo del gr\u00e1fico oscuro o claro",
+        "dark": "Oscuro",
+        "light": "Claro",
+        "defaultTimeframe": "Marco Temporal Predeterminado",
+        "defaultTimeframeDesc": "Marco temporal del gr\u00e1fico al abrir",
+        "defaultAmount": "Monto de Trade Predeterminado",
+        "defaultAmountDesc": "Monto inicial para cada trade",
+        "autoConfirm": "Confirmaci\u00f3n Autom\u00e1tica",
+        "autoConfirmDesc": "Omitir di\u00e1logo de confirmaci\u00f3n",
+        "notifications": "Notificaciones",
+        "notificationsDesc": "Notificaciones de resultados de trading",
+        "priceAlerts": "Configuraci\u00f3n de Alertas de Precio",
+        "toastThreshold": "Umbral Toast (predeterminado 5%)",
+        "toastThresholdDesc": "Mostrar notificaci\u00f3n toast",
+        "modalThreshold": "Umbral Modal (predeterminado 10%)",
+        "modalThresholdDesc": "Mostrar modal de alerta detallada",
+        "saveButton": "Guardar Configuraci\u00f3n",
+        "saved": "\u2705 \u00a1Configuraci\u00f3n guardada!",
+        "emailLabel": "Email",
+        "emailNotVerified": "\u26a0\ufe0f Email no verificado",
+        "emailNotVerifiedDesc": "Verifica tu email para activar el trading.",
+        "resendVerification": "Reenviar Email de Verificaci\u00f3n",
+        "resendCooldown": "Reenviar en {seconds}s",
+        "sending": "Enviando..."
+    },
+    "account": {
+        "title": "Mi Cuenta",
+        "demoBalance": "Saldo Demo",
+        "realBalance": "Saldo Real",
+        "tradeHistory": "Historial de Trades",
+        "noHistory": "Sin historial de trades a\u00fan",
+        "signOut": "Cerrar Sesi\u00f3n"
+    },
+    "offers": {
+        "title": "Todos los Activos de Trading",
+        "commodities": "Materias Primas",
+        "stocks": "Acciones",
+        "crypto": "Cripto",
+        "forex": "Forex"
+    },
+    "bot": {
+        "title": "Bot de Trading Autom\u00e1tico",
+        "desc": "Bot de trading autom\u00e1tico pr\u00f3ximamente.",
+        "comingSoon": "Pr\u00f3ximamente"
+    },
+    "support": {
+        "title": "Soporte",
+        "liveChat": "Chat en Vivo",
+        "liveChatDesc": "Chatea directamente con nuestro equipo de soporte",
+        "liveChatAction": "Iniciar Chat",
+        "email": "Soporte por Email",
+        "emailDesc": "support@canonsite.com",
+        "emailAction": "Enviar Email",
+        "guide": "Gu\u00eda de Trading",
+        "guideDesc": "Aprende estrategias de trading efectivas",
+        "guideAction": "Leer Gu\u00eda",
+        "faq": "Preguntas Frecuentes",
+        "faqDesc": "Preguntas frecuentes",
+        "faqAction": "Ver FAQ"
+    },
+    "trade": {
+        "won": "\ud83c\udfc6 \u00a1GANASTE!",
+        "lost": "\ud83d\ude14 PERDISTE",
+        "closingIn": "Cerrando en {seconds}s",
+        "confirmTitle": "Confirmar Trade",
+        "confirmDesc": "{direction} {asset} por ${amount} ({duration})",
+        "cancel": "Cancelar",
+        "buyLabel": "COMPRAR",
+        "sellLabel": "VENDER"
+    },
+    "priceAlert": {
+        "significantChange": "\u00a1Cambio de Precio Significativo!",
+        "previousPrice": "Precio Anterior",
+        "currentPrice": "Precio Actual",
+        "change": "Cambio",
+        "dismiss": "Ignorar",
+        "tradeNow": "Tradear Ahora",
+        "up": "subi\u00f3",
+        "down": "baj\u00f3"
+    },
+    "priceStatus": {
+        "expired": "Precio Expirado",
+        "delayed": "Precio Retrasado",
+        "invalid": "Precio Inv\u00e1lido",
+        "refresh": "Actualizar",
+        "ago": "hace"
+    },
+    "emailVerification": {
+        "verified": "\u2705 \u00a1Email verificado! Ya puedes tradear.",
+        "banner": "\u26a0\ufe0f Tu email no est\u00e1 verificado. Por favor verifica para activar el trading.",
+        "resend": "Reenviar"
+    },
+    "help": {
+        "title": "Ayuda R\u00e1pida",
+        "step1": "1. Selecciona un activo de la barra superior",
+        "step2": "2. Configura la duraci\u00f3n y el monto",
+        "step3": "3. Haz clic en VENDER o COMPRAR para abrir un trade",
+        "step4": "4. Espera a que termine la cuenta regresiva"
+    },
+    "language": {
+        "select": "Idioma"
+    },
+    "tradeHistory": {
+        "won": "GANADO",
+        "lost": "PERDIDO",
+        "active": "ACTIVO"
+    }
+}

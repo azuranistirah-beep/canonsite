@@ -1,37 +1,21 @@
-import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 
 export async function middleware(request: NextRequest) {
-  let supabaseResponse = NextResponse.next({
-    request,
-  });
+  const response = NextResponse.next({ request });
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          );
-          supabaseResponse = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          );
-        },
-      },
-    }
+  // Check for stale Supabase auth cookies without making any network requests.
+  // Network-based auth validation (getUser/getSession) causes repeated
+  // refresh_token_not_found errors on every request when the token is stale.
+  // The client-side AuthContext handles token validation and recovery instead.
+  const authCookies = request.cookies.getAll().filter(
+    ({ name }) =>
+      name.startsWith('sb-') ||
+      name.includes('auth-token') ||
+      name.includes('supabase')
   );
 
-  // Refresh session cookies if present — required for Supabase SSR cookie forwarding.
-  // Route protection is handled client-side because the browser client uses localStorage.
-  await supabase.auth.getSession();
-
-  return supabaseResponse;
+  // Pass through — let client-side auth handle session management
+  return response;
 }
 
 export const config = {

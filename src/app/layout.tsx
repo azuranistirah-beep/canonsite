@@ -1,7 +1,16 @@
 import React from 'react';
 import type { Metadata, Viewport } from 'next';
+import { Inter } from 'next/font/google';
 import '../styles/index.css';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { LanguageProvider } from '@/contexts/LanguageContext';
+
+const inter = Inter({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  display: 'swap',
+  variable: '--font-inter',
+});
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -24,12 +33,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className={inter.variable}>
       <head>
         <script id="tv-widget-script" src="https://s3.tradingview.com/tv.js" async />
 </head>
-      <body>
-        <AuthProvider>{children}</AuthProvider>
+      <body className={inter.className}>
+        <AuthProvider>
+          <LanguageProvider>{children}</LanguageProvider>
+        </AuthProvider>
       </body>
     </html>
   );

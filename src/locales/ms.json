@@ -1,0 +1,185 @@
+{
+    "topBar": {
+        "demoAccount": "Akaun Demo",
+        "realAccount": "Akaun Sebenar",
+        "deposit": "Deposit",
+        "balance": "Baki"
+    },
+    "secondBar": {
+        "searchAssets": "Cari Aset",
+        "settings": "Tetapan",
+        "allAssets": "Semua Aset",
+        "payout": "Bayaran"
+    },
+    "tradePanel": {
+        "duration": "Tempoh",
+        "amount": "Jumlah",
+        "sell": "JUAL",
+        "buy": "BELI",
+        "priceUnavailable": "Harga tidak tersedia, sila muat semula",
+        "emailVerificationRequired": "Pengesahan e-mel diperlukan"
+    },
+    "bottomNav": {
+        "platform": "Platform",
+        "offers": "Tawaran",
+        "bot": "Bot",
+        "support": "Sokongan",
+        "account": "Akaun"
+    },
+    "notifications": {
+        "title": "Pemberitahuan Dagangan",
+        "markAllRead": "Tandakan semua sebagai dibaca",
+        "noNotifications": "Tiada pemberitahuan lagi"
+    },
+    "search": {
+        "placeholder": "Cari aset (Bitcoin, ETH, Emas, EUR/USD...)",
+        "noResults": "Tiada aset ditemui untuk",
+        "allAssets": "Semua Aset"
+    },
+    "deposit": {
+        "title": "Deposit Dana",
+        "subtitle": "Tambah baki ke akaun dagangan Sebenar anda",
+        "realAccount": "Akaun Sebenar",
+        "realAccountDesc": "Deposit dikreditkan ke baki akaun Sebenar anda",
+        "depositAmount": "Jumlah Deposit",
+        "paymentMethod": "Kaedah Pembayaran",
+        "submitButton": "Hantar Permintaan Deposit",
+        "processing": "Memproses...",
+        "successTitle": "Permintaan Dihantar!",
+        "close": "Tutup",
+        "minimumDeposit": "Deposit minimum ialah",
+        "loadingRates": "Memuatkan kadar pertukaran...",
+        "bankTransfer": "Pindahan Bank",
+        "bankTransferInfo": "BCA: 1234567890 a.n. PT Investoft Indonesia",
+        "creditCard": "Kad Kredit",
+        "creditCardInfo": "Visa / Mastercard \u2014 diproses secara automatik dalam 5 minit",
+        "crypto": "Mata Wang Kripto",
+        "cryptoInfo": "BTC: bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
+        "availablePaymentMethods": "Kaedah Pembayaran Tersedia",
+        "secureStripe": "Pembayaran Selamat melalui Stripe",
+        "secureStripeDesc": "Enkripsi SSL 256-bit \u00b7 Patuh PCI DSS \u00b7 Kemas kini baki segera",
+        "pm_card": "Kad Kredit / Debit",
+        "pm_fpx": "Perbankan Dalam Talian FPX",
+        "pm_touchngo": "Touch 'n Go eWallet",
+        "pm_grabpay": "GrabPay",
+        "pm_paynow": "PayNow",
+        "pm_promptpay": "PromptPay",
+        "pm_gcash": "GCash",
+        "pm_paymaya": "PayMaya",
+        "pm_alipay": "Alipay",
+        "pm_wechatpay": "WeChat Pay"
+    },
+    "settings": {
+        "title": "Tetapan",
+        "chartTab": "\ud83d\udcc8 Carta",
+        "accountTab": "\ud83d\udc64 Akaun",
+        "tradingTab": "\u2699\ufe0f Dagangan",
+        "chartTheme": "Tema Carta",
+        "chartThemeDesc": "Latar belakang carta gelap atau cerah",
+        "dark": "Gelap",
+        "light": "Cerah",
+        "defaultTimeframe": "Jangka Masa Lalai",
+        "defaultTimeframeDesc": "Jangka masa carta semasa dibuka",
+        "defaultAmount": "Jumlah Dagangan Lalai",
+        "defaultAmountDesc": "Jumlah awal untuk setiap dagangan",
+        "autoConfirm": "Pengesahan Automatik",
+        "autoConfirmDesc": "Langkau dialog pengesahan",
+        "notifications": "Pemberitahuan",
+        "notificationsDesc": "Pemberitahuan hasil dagangan",
+        "priceAlerts": "Tetapan Amaran Harga",
+        "toastThreshold": "Ambang Toast (lalai 5%)",
+        "toastThresholdDesc": "Tunjukkan pemberitahuan toast",
+        "modalThreshold": "Ambang Modal (lalai 10%)",
+        "modalThresholdDesc": "Tunjukkan modal amaran terperinci",
+        "saveButton": "Simpan Tetapan",
+        "saved": "\u2705 Tetapan disimpan!",
+        "emailLabel": "E-mel",
+        "emailNotVerified": "\u26a0\ufe0f E-mel belum disahkan",
+        "emailNotVerifiedDesc": "Sahkan e-mel anda untuk mengaktifkan dagangan.",
+        "resendVerification": "Hantar Semula E-mel Pengesahan",
+        "resendCooldown": "Hantar semula dalam {seconds}s",
+        "sending": "Menghantar..."
+    },
+    "account": {
+        "title": "Akaun Saya",
+        "demoBalance": "Baki Demo",
+        "realBalance": "Baki Sebenar",
+        "tradeHistory": "Sejarah Dagangan",
+        "noHistory": "Tiada sejarah dagangan lagi",
+        "signOut": "Log Keluar"
+    },
+    "offers": {
+        "title": "Semua Aset Dagangan",
+        "commodities": "Komoditi",
+        "stocks": "Saham",
+        "crypto": "Kripto",
+        "forex": "Forex"
+    },
+    "bot": {
+        "title": "Bot Dagangan Automatik",
+        "desc": "Bot dagangan automatik akan datang.",
+        "comingSoon": "Akan Datang"
+    },
+    "support": {
+        "title": "Sokongan",
+        "liveChat": "Sembang Langsung",
+        "liveChatDesc": "Sembang terus dengan pasukan sokongan kami",
+        "liveChatAction": "Mulakan Sembang",
+        "email": "Sokongan E-mel",
+        "emailDesc": "support@canonsite.com",
+        "emailAction": "Hantar E-mel",
+        "guide": "Panduan Dagangan",
+        "guideDesc": "Pelajari strategi dagangan yang berkesan",
+        "guideAction": "Baca Panduan",
+        "faq": "Soalan Lazim",
+        "faqDesc": "Soalan yang sering ditanya",
+        "faqAction": "Lihat Soalan Lazim"
+    },
+    "trade": {
+        "won": "\ud83c\udfc6 MENANG!",
+        "lost": "\ud83d\ude14 KALAH",
+        "closingIn": "Menutup dalam {seconds}s",
+        "confirmTitle": "Sahkan Dagangan",
+        "confirmDesc": "{direction} {asset} sebesar ${amount} ({duration})",
+        "cancel": "Batal",
+        "buyLabel": "BELI",
+        "sellLabel": "JUAL"
+    },
+    "priceAlert": {
+        "significantChange": "Perubahan Harga Signifikan!",
+        "previousPrice": "Harga Sebelumnya",
+        "currentPrice": "Harga Semasa",
+        "change": "Perubahan",
+        "dismiss": "Abaikan",
+        "tradeNow": "Dagangan Sekarang",
+        "up": "naik",
+        "down": "turun"
+    },
+    "priceStatus": {
+        "expired": "Harga Tamat Tempoh",
+        "delayed": "Harga Tertangguh",
+        "invalid": "Harga Tidak Sah",
+        "refresh": "Muat Semula",
+        "ago": "lalu"
+    },
+    "emailVerification": {
+        "verified": "\u2705 E-mel disahkan! Anda kini boleh berdagang.",
+        "banner": "\u26a0\ufe0f E-mel anda belum disahkan. Sila sahkan untuk mengaktifkan dagangan.",
+        "resend": "Hantar Semula"
+    },
+    "help": {
+        "title": "Bantuan Pantas",
+        "step1": "1. Pilih aset dari bar atas",
+        "step2": "2. Tetapkan tempoh dan jumlah",
+        "step3": "3. Klik JUAL atau BELI untuk membuka dagangan",
+        "step4": "4. Tunggu kiraan detik selesai"
+    },
+    "language": {
+        "select": "Bahasa"
+    },
+    "tradeHistory": {
+        "won": "MENANG",
+        "lost": "KALAH",
+        "active": "AKTIF"
+    }
+}
