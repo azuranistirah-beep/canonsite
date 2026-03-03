@@ -1,5 +1,6 @@
 'use client';
 import React, { useEffect, useRef } from 'react';
+import { TICKER_TAPE_SYMBOLS } from '@/data/assets';
 
 export default function TickerTape() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -7,7 +8,6 @@ export default function TickerTape() {
   useEffect(() => {
     if (!containerRef?.current) return;
 
-    // Clear any existing content
     containerRef.current.innerHTML = '';
 
     const widgetDiv = document.createElement('div');
@@ -19,24 +19,7 @@ export default function TickerTape() {
     script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js';
     script.async = true;
     script.innerHTML = JSON.stringify({
-      symbols: [
-        { proName: 'BITSTAMP:BTCUSD', title: 'Bitcoin' },
-        { proName: 'BITSTAMP:ETHUSD', title: 'Ethereum' },
-        { proName: 'BINANCE:SOLUSDT', title: 'Solana' },
-        { proName: 'BINANCE:BNBUSDT', title: 'BNB' },
-        { proName: 'BITSTAMP:XRPUSD', title: 'XRP' },
-        { proName: 'FOREXCOM:SPXUSD', title: 'S&P 500' },
-        { proName: 'FOREXCOM:NSXUSD', title: 'Nasdaq 100' },
-        { proName: 'FX_IDC:EURUSD', title: 'EUR/USD' },
-        { proName: 'FX_IDC:GBPUSD', title: 'GBP/USD' },
-        { proName: 'FX_IDC:USDJPY', title: 'USD/JPY' },
-        { proName: 'OANDA:XAUUSD', title: 'Gold' },
-        { proName: 'TVC:USOIL', title: 'Crude Oil' },
-        { proName: 'NASDAQ:AAPL', title: 'Apple' },
-        { proName: 'NASDAQ:NVDA', title: 'NVIDIA' },
-        { proName: 'NASDAQ:TSLA', title: 'Tesla' },
-        { proName: 'NASDAQ:MSFT', title: 'Microsoft' },
-      ],
+      symbols: TICKER_TAPE_SYMBOLS,
       showSymbolLogo: true,
       isTransparent: true,
       displayMode: 'adaptive',

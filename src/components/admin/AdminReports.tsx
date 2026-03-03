@@ -1,23 +1,10 @@
 'use client';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { Download, DollarSign, Users, ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, LineChart, Line, Legend } from 'recharts';
 import { createClient } from '@/lib/supabase/client';
-import { RefreshCw, Download } from 'lucide-react';
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  LineChart,
-  Line,
-  Legend,
-} from 'recharts';
+import Icon from '@/components/ui/AppIcon';
 
-const supabase = createClient();
 
 interface MonthlyData {
   month: string;
@@ -28,224 +15,276 @@ interface MonthlyData {
   trades: number;
 }
 
-export default function AdminReportsPage() {
-  const [data, setData] = useState<MonthlyData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [period, setPeriod] = useState<'6m' | '12m'>('6m');
+interface TopUser {
+  rank: number;
+  email: string;
+  volume: number;
+  trades: number;
+  pnl: number;
+}
 
-  const loadReports = useCallback(async () => {
+const chartTooltipStyle = { background: '#1a1a1a', border: '1px solid #ffffff20', borderRadius: 8 };
+
+export default function AdminReportsPage() {
+  const [period, setPeriod] = useState<'6m' | '12m'>('6m');
+  const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
+  const [topUsers, setTopUsers] = useState<TopUser[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchReports = useCallback(async () => {
+    const supabase = createClient();
     setLoading(true);
-    setError('');
     try {
-      const months = period === '6m' ? 6 : 12;
-      const [depositsRes, withdrawalsRes, usersRes, tradesRes] = await Promise.all([
-        supabase.from('deposit_requests').select('amount, status, created_at'),
-        supabase.from('withdrawal_requests').select('amount, status, created_at'),
-        supabase.from('user_profiles').select('created_at'),
-        supabase.from('trades').select('created_at, status'),
+      const monthsBack = period === '6m' ? 6 : 12;
+      const since = new Date();
+      since.setMonth(since.getMonth() - monthsBack);
+      since.setDate(1);
+      since.setHours(0, 0, 0, 0);
+
+      const [depRes, wdRes, signupRes, tradeRes, topTradeRes] = await Promise.all([
+        supabase.from('deposit_requests').select('amount, created_at').eq('status', 'approved').gte('created_at', since.toISOString()),
+        supabase.from('withdrawal_requests').select('amount, created_at').eq('status', 'completed').gte('created_at', since.toISOString()),
+        supabase.from('user_profiles').select('created_at').gte('created_at', since.toISOString()),
+        supabase.from('trades').select('amount, profit_loss, created_at').gte('created_at', since.toISOString()),
+        supabase.from('trades').select('user_id, amount, profit_loss, user_profiles!trades_user_id_fkey(email)').order('amount', { ascending: false }).limit(100),
       ]);
 
-      const deposits = depositsRes.data || [];
-      const withdrawals = withdrawalsRes.data || [];
-      const users = usersRes.data || [];
-      const trades = tradesRes.data || [];
-
-      const result: MonthlyData[] = [];
-      for (let i = months - 1; i >= 0; i--) {
+      // Build monthly buckets
+      const months: Record<string, MonthlyData> = {};
+      for (let i = monthsBack - 1; i >= 0; i--) {
         const d = new Date();
         d.setMonth(d.getMonth() - i);
-        const monthStr = d.toLocaleString('id-ID', { month: 'short', year: '2-digit' });
-        const monthStart = new Date(d.getFullYear(), d.getMonth(), 1).toISOString();
-        const monthEnd = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59).toISOString();
-
-        const monthDeposits = deposits
-          .filter((dep) => dep.created_at >= monthStart && dep.created_at <= monthEnd && dep.status === 'approved')
-          .reduce((sum, dep) => sum + parseFloat(dep.amount || '0'), 0);
-
-        const monthWithdrawals = withdrawals
-          .filter((w) => w.created_at >= monthStart && w.created_at <= monthEnd && w.status === 'completed')
-          .reduce((sum, w) => sum + parseFloat(w.amount || '0'), 0);
-
-        const monthSignups = users.filter((u) => u.created_at >= monthStart && u.created_at <= monthEnd).length;
-        const monthTrades = trades.filter((t) => t.created_at >= monthStart && t.created_at <= monthEnd).length;
-
-        result.push({
-          month: monthStr,
-          deposits: monthDeposits,
-          withdrawals: monthWithdrawals,
-          revenue: monthDeposits - monthWithdrawals,
-          signups: monthSignups,
-          trades: monthTrades,
-        });
+        const key = d.toLocaleDateString('id-ID', { month: 'short', year: '2-digit' });
+        months[key] = { month: key, deposits: 0, withdrawals: 0, revenue: 0, signups: 0, trades: 0 };
       }
-      setData(result);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Gagal memuat laporan');
+
+      const getKey = (dateStr: string) => {
+        const d = new Date(dateStr);
+        return d.toLocaleDateString('id-ID', { month: 'short', year: '2-digit' });
+      };
+
+      (depRes.data || []).forEach((d: any) => {
+        const k = getKey(d.created_at);
+        if (months[k]) { months[k].deposits += Number(d.amount); months[k].revenue += Number(d.amount) * 0.02; }
+      });
+      (wdRes.data || []).forEach((w: any) => {
+        const k = getKey(w.created_at);
+        if (months[k]) months[k].withdrawals += Number(w.amount);
+      });
+      (signupRes.data || []).forEach((u: any) => {
+        const k = getKey(u.created_at);
+        if (months[k]) months[k].signups += 1;
+      });
+      (tradeRes.data || []).forEach((t: any) => {
+        const k = getKey(t.created_at);
+        if (months[k]) months[k].trades += 1;
+      });
+
+      setMonthlyData(Object.values(months));
+
+      // Top users by volume
+      const userMap: Record<string, { email: string; volume: number; trades: number; pnl: number }> = {};
+      (topTradeRes.data || []).forEach((t: any) => {
+        const email = (t.user_profiles as any)?.email || 'Unknown';
+        if (!userMap[t.user_id]) userMap[t.user_id] = { email, volume: 0, trades: 0, pnl: 0 };
+        userMap[t.user_id].volume += Number(t.amount);
+        userMap[t.user_id].trades += 1;
+        userMap[t.user_id].pnl += Number(t.profit_loss || 0);
+      });
+
+      const sorted = Object.values(userMap).sort((a, b) => b.volume - a.volume).slice(0, 10);
+      setTopUsers(sorted.map((u, i) => ({ rank: i + 1, ...u })));
+      setError(null);
+    } catch (err: any) {
+      setError(err.message || 'Gagal memuat laporan');
     } finally {
       setLoading(false);
     }
   }, [period]);
 
-  useEffect(() => { loadReports(); }, [loadReports]);
+  useEffect(() => { fetchReports(); }, [fetchReports]);
 
-  const exportCSV = () => {
-    const headers = ['Bulan', 'Deposit', 'Penarikan', 'Revenue', 'Pendaftar Baru', 'Total Trade'];
-    const rows = data.map((d) => [d.month, d.deposits.toFixed(2), d.withdrawals.toFixed(2), d.revenue.toFixed(2), d.signups, d.trades]);
-    const csv = [headers, ...rows].map((r) => r.join(',')).join('\n');
+  const totals = useMemo(() => ({
+    revenue: monthlyData.reduce((s, d) => s + d.revenue, 0),
+    deposits: monthlyData.reduce((s, d) => s + d.deposits, 0),
+    withdrawals: monthlyData.reduce((s, d) => s + d.withdrawals, 0),
+    signups: monthlyData.reduce((s, d) => s + d.signups, 0),
+  }), [monthlyData]);
+
+  const handleExportCSV = () => {
+    const headers = ['Bulan', 'Deposit', 'Penarikan', 'Revenue', 'Signup', 'Trades'];
+    const rows = monthlyData.map(d => [d.month, d.deposits, d.withdrawals, d.revenue.toFixed(2), d.signups, d.trades]);
+    const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `laporan-${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `admin-report-${period}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
-  const chartTooltipStyle = { background: '#1a1a1a', border: '1px solid #ffffff20', borderRadius: 8 };
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <RefreshCw size={24} className="animate-spin text-blue-500" />
-      </div>
-    );
-  }
+  const metricCards = [
+    { title: 'Total Revenue', value: `$${totals.revenue.toLocaleString('en-US', { maximumFractionDigits: 0 })}`, icon: DollarSign, color: 'text-green-400' },
+    { title: 'Total Deposits', value: `$${totals.deposits.toLocaleString('en-US', { maximumFractionDigits: 0 })}`, icon: ArrowDownCircle, color: 'text-blue-400' },
+    { title: 'Total Withdrawals', value: `$${totals.withdrawals.toLocaleString('en-US', { maximumFractionDigits: 0 })}`, icon: ArrowUpCircle, color: 'text-orange-400' },
+    { title: 'New Signups', value: totals.signups.toLocaleString(), icon: Users, color: 'text-purple-400' },
+  ];
 
   return (
     <div className="space-y-6">
       {error && (
-        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-red-400 text-sm">{error}</div>
+        <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3 text-sm text-red-400">{error}</div>
       )}
 
-      {/* Controls */}
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex gap-2">
-          {(['6m', '12m'] as const).map((p) => (
-            <button key={p} onClick={() => setPeriod(p)}
-              className={`px-3 py-2 rounded-lg text-xs font-medium transition-all ${
-                period === p ? 'bg-blue-600 text-white' : 'bg-[#111111] border border-white/10 text-gray-400 hover:text-white'
-              }`}>
-              {p === '6m' ? '6 Bulan' : '12 Bulan'}
-            </button>
-          ))}
+        <div>
+          <h2 className="text-lg font-bold text-white">Laporan Platform</h2>
+          <p className="text-xs text-gray-500 mt-0.5">Data real dari Supabase</p>
         </div>
-        <div className="flex gap-2">
-          <button onClick={loadReports} className="p-2 bg-[#111111] border border-white/10 rounded-lg text-gray-400 hover:text-white">
-            <RefreshCw size={14} />
-          </button>
-          <button onClick={exportCSV} className="flex items-center gap-2 px-3 py-2 bg-[#111111] border border-white/10 rounded-lg text-sm text-gray-400 hover:text-white transition-colors">
+        <div className="flex items-center gap-2">
+          <div className="flex gap-1 bg-zinc-900 border border-zinc-800 rounded-lg p-1">
+            {(['6m', '12m'] as const).map(p => (
+              <button key={p} onClick={() => setPeriod(p)}
+                className={`px-3 py-1.5 rounded text-xs font-medium transition-all ${
+                  period === p ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'
+                }`}>
+                {p === '6m' ? '6 Bulan' : '12 Bulan'}
+              </button>
+            ))}
+          </div>
+          <button onClick={handleExportCSV}
+            className="flex items-center gap-2 px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-lg text-sm text-gray-400 hover:text-white transition-colors">
             <Download size={14} /> Export CSV
           </button>
         </div>
       </div>
 
-      {/* Financial Reports */}
-      <div>
-        <h3 className="text-sm font-semibold text-white mb-3">Laporan Keuangan</h3>
+      {/* Metric Cards */}
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+        {loading ? (
+          Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 animate-pulse">
+              <div className="h-3 bg-zinc-800 rounded w-24 mb-3" />
+              <div className="h-7 bg-zinc-800 rounded w-32" />
+            </div>
+          ))
+        ) : (
+          metricCards.map((card) => {
+            const Icon = card.icon;
+            return (
+              <div key={card.title} className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+                <div className="flex items-center gap-2 mb-2">
+                  <Icon size={14} className={card.color} />
+                  <p className="text-xs text-gray-400">{card.title}</p>
+                </div>
+                <p className={`text-xl font-bold ${card.color}`}>{card.value}</p>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Deposit & Withdrawal Chart */}
+      {!loading && (
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+          <h3 className="text-sm font-semibold text-white mb-4">Deposit & Penarikan per Bulan</h3>
+          <ResponsiveContainer width="100%" height={220}>
+            <AreaChart data={monthlyData}>
+              <defs>
+                <linearGradient id="rDep" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="rWd" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#f97316" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
+              <XAxis dataKey="month" tick={{ fill: '#9ca3af', fontSize: 11 }} />
+              <YAxis tick={{ fill: '#9ca3af', fontSize: 11 }} tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} />
+              <Tooltip contentStyle={chartTooltipStyle} labelStyle={{ color: '#fff' }} formatter={(v: number) => [`$${v.toLocaleString()}`, '']} />
+              <Legend wrapperStyle={{ color: '#9ca3af', fontSize: 12 }} />
+              <Area type="monotone" dataKey="deposits" name="Deposit" stroke="#3b82f6" fill="url(#rDep)" strokeWidth={2} />
+              <Area type="monotone" dataKey="withdrawals" name="Penarikan" stroke="#f97316" fill="url(#rWd)" strokeWidth={2} />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+
+      {/* Signups & Trades Chart */}
+      {!loading && (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-          <div className="bg-[#111111] border border-white/10 rounded-xl p-5">
-            <p className="text-xs text-gray-400 mb-3">Total Deposit (Disetujui)</p>
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+            <h3 className="text-sm font-semibold text-white mb-4">Pendaftaran Pengguna Baru</h3>
             <ResponsiveContainer width="100%" height={180}>
-              <AreaChart data={data}>
-                <defs>
-                  <linearGradient id="gDeposit" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
+              <BarChart data={monthlyData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
                 <XAxis dataKey="month" tick={{ fill: '#9ca3af', fontSize: 11 }} />
                 <YAxis tick={{ fill: '#9ca3af', fontSize: 11 }} />
                 <Tooltip contentStyle={chartTooltipStyle} labelStyle={{ color: '#fff' }} />
-                <Area type="monotone" dataKey="deposits" name="Deposit" stroke="#3b82f6" fill="url(#gDeposit)" strokeWidth={2} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-
-          <div className="bg-[#111111] border border-white/10 rounded-xl p-5">
-            <p className="text-xs text-gray-400 mb-3">Total Penarikan (Selesai)</p>
-            <ResponsiveContainer width="100%" height={180}>
-              <AreaChart data={data}>
-                <defs>
-                  <linearGradient id="gWithdraw" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#f97316" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
-                <XAxis dataKey="month" tick={{ fill: '#9ca3af', fontSize: 11 }} />
-                <YAxis tick={{ fill: '#9ca3af', fontSize: 11 }} />
-                <Tooltip contentStyle={chartTooltipStyle} labelStyle={{ color: '#fff' }} />
-                <Area type="monotone" dataKey="withdrawals" name="Penarikan" stroke="#f97316" fill="url(#gWithdraw)" strokeWidth={2} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-
-          <div className="bg-[#111111] border border-white/10 rounded-xl p-5">
-            <p className="text-xs text-gray-400 mb-3">Revenue (Deposit - Penarikan)</p>
-            <ResponsiveContainer width="100%" height={180}>
-              <BarChart data={data}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
-                <XAxis dataKey="month" tick={{ fill: '#9ca3af', fontSize: 11 }} />
-                <YAxis tick={{ fill: '#9ca3af', fontSize: 11 }} />
-                <Tooltip contentStyle={chartTooltipStyle} labelStyle={{ color: '#fff' }} />
-                <Bar dataKey="revenue" name="Revenue" fill="#22c55e" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="signups" name="Signup" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
-
-          <div className="bg-[#111111] border border-white/10 rounded-xl p-5">
-            <p className="text-xs text-gray-400 mb-3">Pendaftar Baru & Total Trade</p>
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+            <h3 className="text-sm font-semibold text-white mb-4">Jumlah Trade per Bulan</h3>
             <ResponsiveContainer width="100%" height={180}>
-              <LineChart data={data}>
+              <LineChart data={monthlyData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
                 <XAxis dataKey="month" tick={{ fill: '#9ca3af', fontSize: 11 }} />
                 <YAxis tick={{ fill: '#9ca3af', fontSize: 11 }} />
                 <Tooltip contentStyle={chartTooltipStyle} labelStyle={{ color: '#fff' }} />
-                <Legend wrapperStyle={{ fontSize: 12 }} />
-                <Line type="monotone" dataKey="signups" name="Pendaftar" stroke="#a855f7" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="trades" name="Trade" stroke="#06b6d4" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="trades" name="Trades" stroke="#22c55e" strokeWidth={2} dot={false} />
               </LineChart>
             </ResponsiveContainer>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Data Table */}
-      <div className="bg-[#111111] border border-white/10 rounded-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-white/10">
-          <h3 className="text-sm font-semibold text-white">Ringkasan Data</h3>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-white/10">
-                <th className="text-left px-4 py-3 text-xs font-medium text-gray-400">Bulan</th>
-                <th className="text-right px-4 py-3 text-xs font-medium text-gray-400">Deposit</th>
-                <th className="text-right px-4 py-3 text-xs font-medium text-gray-400">Penarikan</th>
-                <th className="text-right px-4 py-3 text-xs font-medium text-gray-400">Revenue</th>
-                <th className="text-right px-4 py-3 text-xs font-medium text-gray-400">Pendaftar</th>
-                <th className="text-right px-4 py-3 text-xs font-medium text-gray-400">Trade</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5">
-              {data.map((row) => (
-                <tr key={row.month} className="hover:bg-white/[0.02]">
-                  <td className="px-4 py-3 text-white">{row.month}</td>
-                  <td className="px-4 py-3 text-right text-green-400">${row.deposits.toFixed(2)}</td>
-                  <td className="px-4 py-3 text-right text-orange-400">${row.withdrawals.toFixed(2)}</td>
-                  <td className={`px-4 py-3 text-right font-medium ${row.revenue >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                    ${row.revenue.toFixed(2)}
-                  </td>
-                  <td className="px-4 py-3 text-right text-gray-300">{row.signups}</td>
-                  <td className="px-4 py-3 text-right text-gray-300">{row.trades}</td>
+      {/* Top Users */}
+      {!loading && topUsers.length > 0 && (
+        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5">
+          <h3 className="text-sm font-semibold text-white mb-4">Top 10 Pengguna by Volume</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-white/10">
+                  <th className="text-left px-3 py-2 text-xs font-medium text-gray-400">#</th>
+                  <th className="text-left px-3 py-2 text-xs font-medium text-gray-400">Email</th>
+                  <th className="text-right px-3 py-2 text-xs font-medium text-gray-400">Volume</th>
+                  <th className="text-right px-3 py-2 text-xs font-medium text-gray-400">Trades</th>
+                  <th className="text-right px-3 py-2 text-xs font-medium text-gray-400">P&L</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {topUsers.map((u) => (
+                  <tr key={u.rank} className="hover:bg-white/[0.02]">
+                    <td className="px-3 py-2 text-gray-400 text-xs">{u.rank}</td>
+                    <td className="px-3 py-2 text-white text-sm">{u.email}</td>
+                    <td className="px-3 py-2 text-right text-white">${u.volume.toLocaleString()}</td>
+                    <td className="px-3 py-2 text-right text-gray-400">{u.trades}</td>
+                    <td className={`px-3 py-2 text-right font-medium ${u.pnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      {u.pnl >= 0 ? '+' : ''}${u.pnl.toLocaleString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
+
+      {loading && (
+        <div className="space-y-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="h-48 bg-zinc-900 border border-zinc-800 rounded-xl animate-pulse" />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

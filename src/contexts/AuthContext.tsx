@@ -92,6 +92,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const loginInProgressRef = useRef(false);
   // Single-flight guard: prevents concurrent getSession() calls
   const inFlightRef = useRef(false);
+  // Prevents SIGNED_OUT event from redirecting to /auth during hard navigation
+  const hardNavigatingRef = useRef(false);
   const router = useRouter();
 
   /**
@@ -186,8 +188,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             setSession(null);
             setUser(null);
             setLoading(false);
+            // Only redirect to /auth if:
+            // 1. Not currently doing a hard navigation (window.location.href)
+            // 2. Not already on /auth page
+            // 3. Not in the middle of a login flow
             if (
               !loginInProgressRef.current &&
+              !hardNavigatingRef.current &&
               typeof window !== 'undefined' &&
               !window.location.pathname.startsWith('/auth')
             ) {
@@ -339,6 +346,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
         throw error;
       }
+      // Set hard-navigating flag BEFORE returning so that when the caller
+      // does window.location.href = '/admin', any SIGNED_OUT event fired
+      // during page unload won't redirect back to /auth.
+      hardNavigatingRef.current = true;
       return data;
     } finally {
       loginInProgressRef.current = false;
@@ -347,6 +358,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   // Sign Out
   const signOut = async () => {
+    // Clear hard-navigating flag so SIGNED_OUT redirect works normally on logout
+    hardNavigatingRef.current = false;
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
@@ -385,6 +398,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     getCurrentUser,
     isEmailVerified,
     resendVerificationEmail,
+    setHardNavigating: (val: boolean) => { hardNavigatingRef.current = val; },
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

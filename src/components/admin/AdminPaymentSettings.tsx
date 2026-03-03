@@ -1,19 +1,9 @@
 'use client';
 import React, { useState, useEffect, useCallback } from 'react';
+import { Plus, Edit2, Trash2, X, Check, ToggleLeft, ToggleRight, Building2, Smartphone, Bitcoin } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
-import {
-  Plus,
-  Edit2,
-  Trash2,
-  X,
-  Check,
-  RefreshCw,
-  ToggleLeft,
-  ToggleRight,
-  QrCode,
-} from 'lucide-react';
+import Icon from '@/components/ui/AppIcon';
 
-const supabase = createClient();
 
 interface BankAccount {
   id: string;
@@ -22,8 +12,7 @@ interface BankAccount {
   account_number: string;
   account_holder: string;
   swift_code: string;
-  status: string;
-  created_at: string;
+  status: 'active' | 'inactive';
 }
 
 interface InstantAccount {
@@ -31,8 +20,7 @@ interface InstantAccount {
   method: string;
   account_info: string;
   currencies: string[];
-  status: string;
-  created_at: string;
+  status: 'active' | 'inactive';
 }
 
 interface CryptoWallet {
@@ -41,609 +29,465 @@ interface CryptoWallet {
   network: string;
   wallet_address: string;
   qr_code_url: string;
-  status: string;
-  created_at: string;
+  status: 'active' | 'inactive';
 }
 
-const CURRENCIES = ['MYR', 'USD', 'SGD', 'THB', 'PHP', 'IDR', 'VND', 'EUR', 'GBP'];
-const INSTANT_METHODS = ['Touch n Go', 'GrabPay', 'PayNow', 'PromptPay', 'GCash', 'OVO', 'GoPay', 'DANA'];
-const CRYPTOS = ['BTC', 'ETH', 'USDT', 'USDC', 'BNB', 'TRX'];
-const NETWORKS = ['Bitcoin', 'ERC20', 'TRC20', 'BEP20', 'Solana'];
+function StatusToggle({ status, onToggle }: { status: 'active' | 'inactive'; onToggle: () => void }) {
+  return (
+    <button onClick={onToggle} className={`flex items-center gap-1.5 text-xs font-medium transition-colors ${
+      status === 'active' ? 'text-green-400' : 'text-gray-500'
+    }`}>
+      {status === 'active' ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
+      {status === 'active' ? 'Aktif' : 'Nonaktif'}
+    </button>
+  );
+}
 
 export default function AdminPaymentSettingsPage() {
   const [activeTab, setActiveTab] = useState<'bank' | 'instant' | 'crypto'>('bank');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+  const [banks, setBanks] = useState<BankAccount[]>([]);
+  const [instants, setInstants] = useState<InstantAccount[]>([]);
+  const [cryptos, setCryptos] = useState<CryptoWallet[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState('');
 
-  // Bank Accounts
-  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const [bankModal, setBankModal] = useState<Partial<BankAccount> | null>(null);
-  const [bankLoading, setBankLoading] = useState(false);
-
-  // Instant Accounts
-  const [instantAccounts, setInstantAccounts] = useState<InstantAccount[]>([]);
   const [instantModal, setInstantModal] = useState<Partial<InstantAccount> | null>(null);
-  const [instantLoading, setInstantLoading] = useState(false);
-
-  // Crypto Wallets
-  const [cryptoWallets, setCryptoWallets] = useState<CryptoWallet[]>([]);
   const [cryptoModal, setCryptoModal] = useState<Partial<CryptoWallet> | null>(null);
-  const [cryptoLoading, setCryptoLoading] = useState(false);
-  const [viewQR, setViewQR] = useState<CryptoWallet | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
 
-  const showSuccess = (msg: string) => { setSuccess(msg); setTimeout(() => setSuccess(''), 3000); };
+  const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
 
-  const loadBankAccounts = useCallback(async () => {
+  const fetchAll = useCallback(async () => {
+    const supabase = createClient();
     setLoading(true);
     try {
-      const { data, error } = await supabase.from('payment_bank_accounts').select('*').order('created_at', { ascending: false });
-      if (error) throw error;
-      setBankAccounts(data || []);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Gagal memuat akun bank');
+      const [bankRes, instantRes, cryptoRes] = await Promise.all([
+        supabase.from('payment_bank_accounts').select('*').order('created_at', { ascending: false }),
+        supabase.from('payment_instant_accounts').select('*').order('created_at', { ascending: false }),
+        supabase.from('payment_crypto_wallets').select('*').order('created_at', { ascending: false }),
+      ]);
+      if (bankRes.error) throw bankRes.error;
+      if (instantRes.error) throw instantRes.error;
+      if (cryptoRes.error) throw cryptoRes.error;
+      setBanks(bankRes.data || []);
+      setInstants(instantRes.data || []);
+      setCryptos(cryptoRes.data || []);
+      setError(null);
+    } catch (err: any) {
+      setError(err.message || 'Gagal memuat data');
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const loadInstantAccounts = useCallback(async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.from('payment_instant_accounts').select('*').order('created_at', { ascending: false });
-      if (error) throw error;
-      setInstantAccounts(data || []);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Gagal memuat akun instant');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  const loadCryptoWallets = useCallback(async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.from('payment_crypto_wallets').select('*').order('created_at', { ascending: false });
-      if (error) throw error;
-      setCryptoWallets(data || []);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Gagal memuat dompet crypto');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadBankAccounts();
-    loadInstantAccounts();
-    loadCryptoWallets();
-  }, [loadBankAccounts, loadInstantAccounts, loadCryptoWallets]);
-
-  // Bank CRUD
-  const saveBankAccount = async () => {
+  // Bank handlers
+  const saveBank = async () => {
     if (!bankModal) return;
-    setBankLoading(true);
+    const supabase = createClient();
+    setActionLoading(true);
     try {
       if (bankModal.id) {
-        const { error } = await supabase.from('payment_bank_accounts').update({
-          currency: bankModal.currency,
-          bank_name: bankModal.bank_name,
-          account_number: bankModal.account_number,
-          account_holder: bankModal.account_holder,
-          swift_code: bankModal.swift_code || '',
-          status: bankModal.status || 'active',
-        }).eq('id', bankModal.id);
+        const { error } = await supabase.from('payment_bank_accounts')
+          .update({ currency: bankModal.currency, bank_name: bankModal.bank_name, account_number: bankModal.account_number, account_holder: bankModal.account_holder, swift_code: bankModal.swift_code || '', status: bankModal.status, updated_at: new Date().toISOString() })
+          .eq('id', bankModal.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from('payment_bank_accounts').insert({
-          currency: bankModal.currency || 'USD',
-          bank_name: bankModal.bank_name || '',
-          account_number: bankModal.account_number || '',
-          account_holder: bankModal.account_holder || '',
-          swift_code: bankModal.swift_code || '',
-          status: 'active',
-        });
+        const { error } = await supabase.from('payment_bank_accounts')
+          .insert({ currency: bankModal.currency, bank_name: bankModal.bank_name, account_number: bankModal.account_number, account_holder: bankModal.account_holder, swift_code: bankModal.swift_code || '', status: 'active' });
         if (error) throw error;
       }
+      await fetchAll();
       setBankModal(null);
-      showSuccess('Akun bank berhasil disimpan');
-      loadBankAccounts();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Gagal menyimpan akun bank');
+      showToast('Akun bank disimpan');
+    } catch (err: any) {
+      showToast(`Error: ${err.message}`);
     } finally {
-      setBankLoading(false);
+      setActionLoading(false);
     }
   };
 
-  const deleteBankAccount = async (id: string) => {
-    if (!confirm('Hapus akun bank ini?')) return;
-    try {
-      const { error } = await supabase.from('payment_bank_accounts').delete().eq('id', id);
-      if (error) throw error;
-      showSuccess('Akun bank dihapus');
-      loadBankAccounts();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Gagal menghapus akun bank');
-    }
+  const deleteBank = async (id: string) => {
+    const supabase = createClient();
+    const { error } = await supabase.from('payment_bank_accounts').delete().eq('id', id);
+    if (error) { showToast(`Error: ${error.message}`); return; }
+    setBanks(prev => prev.filter(b => b.id !== id));
+    showToast('Akun bank dihapus');
   };
 
-  const toggleBankStatus = async (acc: BankAccount) => {
-    try {
-      const { error } = await supabase.from('payment_bank_accounts').update({ status: acc.status === 'active' ? 'inactive' : 'active' }).eq('id', acc.id);
-      if (error) throw error;
-      loadBankAccounts();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Gagal mengubah status');
-    }
+  const toggleBank = async (id: string) => {
+    const supabase = createClient();
+    const bank = banks.find(b => b.id === id);
+    if (!bank) return;
+    const newStatus = bank.status === 'active' ? 'inactive' : 'active';
+    const { error } = await supabase.from('payment_bank_accounts').update({ status: newStatus, updated_at: new Date().toISOString() }).eq('id', id);
+    if (error) { showToast(`Error: ${error.message}`); return; }
+    setBanks(prev => prev.map(b => b.id === id ? { ...b, status: newStatus } : b));
   };
 
-  // Instant CRUD
-  const saveInstantAccount = async () => {
+  // Instant handlers
+  const saveInstant = async () => {
     if (!instantModal) return;
-    setInstantLoading(true);
+    const supabase = createClient();
+    setActionLoading(true);
     try {
-      const currencies = typeof instantModal.currencies === 'string' ? (instantModal.currencies as string).split(',').map((c) => c.trim())
-        : instantModal.currencies || ['USD'];
       if (instantModal.id) {
-        const { error } = await supabase.from('payment_instant_accounts').update({
-          method: instantModal.method,
-          account_info: instantModal.account_info,
-          currencies,
-          status: instantModal.status || 'active',
-        }).eq('id', instantModal.id);
+        const { error } = await supabase.from('payment_instant_accounts')
+          .update({ method: instantModal.method, account_info: instantModal.account_info, status: instantModal.status, updated_at: new Date().toISOString() })
+          .eq('id', instantModal.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from('payment_instant_accounts').insert({
-          method: instantModal.method || '',
-          account_info: instantModal.account_info || '',
-          currencies,
-          status: 'active',
-        });
+        const { error } = await supabase.from('payment_instant_accounts')
+          .insert({ method: instantModal.method, account_info: instantModal.account_info, currencies: ['USD'], status: 'active' });
         if (error) throw error;
       }
+      await fetchAll();
       setInstantModal(null);
-      showSuccess('Akun instant berhasil disimpan');
-      loadInstantAccounts();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Gagal menyimpan akun instant');
+      showToast('Akun instant disimpan');
+    } catch (err: any) {
+      showToast(`Error: ${err.message}`);
     } finally {
-      setInstantLoading(false);
+      setActionLoading(false);
     }
   };
 
-  const deleteInstantAccount = async (id: string) => {
-    if (!confirm('Hapus akun instant ini?')) return;
-    try {
-      const { error } = await supabase.from('payment_instant_accounts').delete().eq('id', id);
-      if (error) throw error;
-      showSuccess('Akun instant dihapus');
-      loadInstantAccounts();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Gagal menghapus akun instant');
-    }
+  const deleteInstant = async (id: string) => {
+    const supabase = createClient();
+    const { error } = await supabase.from('payment_instant_accounts').delete().eq('id', id);
+    if (error) { showToast(`Error: ${error.message}`); return; }
+    setInstants(prev => prev.filter(i => i.id !== id));
+    showToast('Akun instant dihapus');
   };
 
-  const toggleInstantStatus = async (acc: InstantAccount) => {
-    try {
-      const { error } = await supabase.from('payment_instant_accounts').update({ status: acc.status === 'active' ? 'inactive' : 'active' }).eq('id', acc.id);
-      if (error) throw error;
-      loadInstantAccounts();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Gagal mengubah status');
-    }
+  const toggleInstant = async (id: string) => {
+    const supabase = createClient();
+    const inst = instants.find(i => i.id === id);
+    if (!inst) return;
+    const newStatus = inst.status === 'active' ? 'inactive' : 'active';
+    const { error } = await supabase.from('payment_instant_accounts').update({ status: newStatus, updated_at: new Date().toISOString() }).eq('id', id);
+    if (error) { showToast(`Error: ${error.message}`); return; }
+    setInstants(prev => prev.map(i => i.id === id ? { ...i, status: newStatus } : i));
   };
 
-  // Crypto CRUD
-  const saveCryptoWallet = async () => {
+  // Crypto handlers
+  const saveCrypto = async () => {
     if (!cryptoModal) return;
-    setCryptoLoading(true);
+    const supabase = createClient();
+    setActionLoading(true);
     try {
-      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(cryptoModal.wallet_address || '')}`;
       if (cryptoModal.id) {
-        const { error } = await supabase.from('payment_crypto_wallets').update({
-          crypto: cryptoModal.crypto,
-          network: cryptoModal.network,
-          wallet_address: cryptoModal.wallet_address,
-          qr_code_url: qrUrl,
-          status: cryptoModal.status || 'active',
-        }).eq('id', cryptoModal.id);
+        const { error } = await supabase.from('payment_crypto_wallets')
+          .update({ crypto: cryptoModal.crypto, network: cryptoModal.network, wallet_address: cryptoModal.wallet_address, status: cryptoModal.status, updated_at: new Date().toISOString() })
+          .eq('id', cryptoModal.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from('payment_crypto_wallets').insert({
-          crypto: cryptoModal.crypto || 'USDT',
-          network: cryptoModal.network || 'TRC20',
-          wallet_address: cryptoModal.wallet_address || '',
-          qr_code_url: qrUrl,
-          status: 'active',
-        });
+        const { error } = await supabase.from('payment_crypto_wallets')
+          .insert({ crypto: cryptoModal.crypto, network: cryptoModal.network, wallet_address: cryptoModal.wallet_address, qr_code_url: '', status: 'active' });
         if (error) throw error;
       }
+      await fetchAll();
       setCryptoModal(null);
-      showSuccess('Dompet crypto berhasil disimpan');
-      loadCryptoWallets();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Gagal menyimpan dompet crypto');
+      showToast('Dompet crypto disimpan');
+    } catch (err: any) {
+      showToast(`Error: ${err.message}`);
     } finally {
-      setCryptoLoading(false);
+      setActionLoading(false);
     }
   };
 
-  const deleteCryptoWallet = async (id: string) => {
-    if (!confirm('Hapus dompet crypto ini?')) return;
-    try {
-      const { error } = await supabase.from('payment_crypto_wallets').delete().eq('id', id);
-      if (error) throw error;
-      showSuccess('Dompet crypto dihapus');
-      loadCryptoWallets();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Gagal menghapus dompet crypto');
-    }
+  const deleteCrypto = async (id: string) => {
+    const supabase = createClient();
+    const { error } = await supabase.from('payment_crypto_wallets').delete().eq('id', id);
+    if (error) { showToast(`Error: ${error.message}`); return; }
+    setCryptos(prev => prev.filter(c => c.id !== id));
+    showToast('Dompet crypto dihapus');
   };
 
-  const toggleCryptoStatus = async (w: CryptoWallet) => {
-    try {
-      const { error } = await supabase.from('payment_crypto_wallets').update({ status: w.status === 'active' ? 'inactive' : 'active' }).eq('id', w.id);
-      if (error) throw error;
-      loadCryptoWallets();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Gagal mengubah status');
-    }
+  const toggleCrypto = async (id: string) => {
+    const supabase = createClient();
+    const crypto = cryptos.find(c => c.id === id);
+    if (!crypto) return;
+    const newStatus = crypto.status === 'active' ? 'inactive' : 'active';
+    const { error } = await supabase.from('payment_crypto_wallets').update({ status: newStatus, updated_at: new Date().toISOString() }).eq('id', id);
+    if (error) { showToast(`Error: ${error.message}`); return; }
+    setCryptos(prev => prev.map(c => c.id === id ? { ...c, status: newStatus } : c));
   };
 
-  const statusBadge = (status: string) => (
-    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-      status === 'active' ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'
-    }`}>
-      {status === 'active' ? 'Aktif' : 'Nonaktif'}
-    </span>
-  );
+  const TABS = [
+    { key: 'bank', label: 'Bank Accounts', icon: Building2, count: banks.length },
+    { key: 'instant', label: 'Instant Payment', icon: Smartphone, count: instants.length },
+    { key: 'crypto', label: 'Crypto Wallets', icon: Bitcoin, count: cryptos.length },
+  ] as const;
 
   return (
     <div className="space-y-4">
-      {error && (
-        <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-red-400 text-sm flex items-center justify-between">
-          <span>{error}</span><button onClick={() => setError('')}><X size={14} /></button>
-        </div>
-      )}
-      {success && (
-        <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-3 text-green-400 text-sm flex items-center gap-2">
-          <Check size={14} /><span>{success}</span>
+      {toast && (
+        <div className="fixed top-4 right-4 z-50 bg-green-600 text-white text-sm px-4 py-3 rounded-lg shadow-lg flex items-center gap-2">
+          <Check size={14} />{toast}
         </div>
       )}
 
+      {error && (
+        <div className="bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3 text-sm text-red-400">{error}</div>
+      )}
+
       {/* Tabs */}
-      <div className="flex gap-1 bg-[#111111] border border-white/10 rounded-xl p-1 w-fit">
-        {(['bank', 'instant', 'crypto'] as const).map((tab) => (
-          <button key={tab} onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              activeTab === tab ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'
+      <div className="flex gap-2 border-b border-white/10 pb-0">
+        {TABS.map(({ key, label, icon: Icon, count }) => (
+          <button key={key} onClick={() => setActiveTab(key)}
+            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-all ${
+              activeTab === key ? 'border-blue-500 text-white' : 'border-transparent text-gray-400 hover:text-white'
             }`}>
-            {tab === 'bank' ? 'Akun Bank' : tab === 'instant' ? 'Instant Payment' : 'Crypto Wallet'}
+            <Icon size={15} />
+            {label}
+            <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+              activeTab === key ? 'bg-blue-600 text-white' : 'bg-white/10 text-gray-400'
+            }`}>{count}</span>
           </button>
         ))}
       </div>
 
-      {/* Bank Accounts Tab */}
-      {activeTab === 'bank' && (
-        <div className="bg-[#111111] border border-white/10 rounded-xl overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
-            <h3 className="text-sm font-semibold text-white">Akun Bank</h3>
-            <div className="flex gap-2">
-              <button onClick={loadBankAccounts} className="p-2 text-gray-400 hover:text-white">
-                <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-              </button>
-              <button onClick={() => setBankModal({ currency: 'MYR', bank_name: '', account_number: '', account_holder: '', swift_code: '', status: 'active' })}
-                className="flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm text-white font-medium transition-colors">
-                <Plus size={14} /> Tambah
-              </button>
-            </div>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-white/10">
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-400">Mata Uang</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-400">Bank</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-400">No. Rekening</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-400">Pemilik</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-400">SWIFT</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-400">Status</th>
-                  <th className="text-right px-4 py-3 text-xs font-medium text-gray-400">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {bankAccounts.length === 0 ? (
-                  <tr><td colSpan={7} className="text-center py-8 text-gray-500">Belum ada akun bank</td></tr>
-                ) : (
-                  bankAccounts.map((acc) => (
-                    <tr key={acc.id} className="hover:bg-white/[0.02]">
-                      <td className="px-4 py-3 font-medium text-white">{acc.currency}</td>
-                      <td className="px-4 py-3 text-gray-300">{acc.bank_name}</td>
-                      <td className="px-4 py-3 text-gray-300">{acc.account_number}</td>
-                      <td className="px-4 py-3 text-gray-300">{acc.account_holder}</td>
-                      <td className="px-4 py-3 text-gray-400">{acc.swift_code || '-'}</td>
-                      <td className="px-4 py-3">{statusBadge(acc.status)}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center justify-end gap-1">
-                          <button onClick={() => toggleBankStatus(acc)} className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-all">
-                            {acc.status === 'active' ? <ToggleRight size={16} className="text-green-400" /> : <ToggleLeft size={16} />}
-                          </button>
-                          <button onClick={() => setBankModal(acc)} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 transition-all">
-                            <Edit2 size={14} />
-                          </button>
-                          <button onClick={() => deleteBankAccount(acc.id)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-all">
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+      {loading ? (
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="h-16 bg-zinc-900 border border-zinc-800 rounded-xl animate-pulse" />
+          ))}
         </div>
-      )}
-
-      {/* Instant Payment Tab */}
-      {activeTab === 'instant' && (
-        <div className="bg-[#111111] border border-white/10 rounded-xl overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
-            <h3 className="text-sm font-semibold text-white">Instant Payment</h3>
-            <div className="flex gap-2">
-              <button onClick={loadInstantAccounts} className="p-2 text-gray-400 hover:text-white">
-                <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-              </button>
-              <button onClick={() => setInstantModal({ method: 'Touch n Go', account_info: '', currencies: ['MYR'], status: 'active' })}
-                className="flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm text-white font-medium transition-colors">
-                <Plus size={14} /> Tambah
-              </button>
-            </div>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-white/10">
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-400">Metode</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-400">Info Akun</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-400">Mata Uang</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-400">Status</th>
-                  <th className="text-right px-4 py-3 text-xs font-medium text-gray-400">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {instantAccounts.length === 0 ? (
-                  <tr><td colSpan={5} className="text-center py-8 text-gray-500">Belum ada akun instant payment</td></tr>
-                ) : (
-                  instantAccounts.map((acc) => (
-                    <tr key={acc.id} className="hover:bg-white/[0.02]">
-                      <td className="px-4 py-3 font-medium text-white">{acc.method}</td>
-                      <td className="px-4 py-3 text-gray-300">{acc.account_info}</td>
-                      <td className="px-4 py-3 text-gray-400">{(acc.currencies || []).join(', ')}</td>
-                      <td className="px-4 py-3">{statusBadge(acc.status)}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center justify-end gap-1">
-                          <button onClick={() => toggleInstantStatus(acc)} className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-all">
-                            {acc.status === 'active' ? <ToggleRight size={16} className="text-green-400" /> : <ToggleLeft size={16} />}
-                          </button>
-                          <button onClick={() => setInstantModal({ ...acc, currencies: acc.currencies })} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 transition-all">
-                            <Edit2 size={14} />
-                          </button>
-                          <button onClick={() => deleteInstantAccount(acc.id)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-all">
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Crypto Wallets Tab */}
-      {activeTab === 'crypto' && (
-        <div className="bg-[#111111] border border-white/10 rounded-xl overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
-            <h3 className="text-sm font-semibold text-white">Crypto Wallet</h3>
-            <div className="flex gap-2">
-              <button onClick={loadCryptoWallets} className="p-2 text-gray-400 hover:text-white">
-                <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-              </button>
-              <button onClick={() => setCryptoModal({ crypto: 'USDT', network: 'TRC20', wallet_address: '', status: 'active' })}
-                className="flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm text-white font-medium transition-colors">
-                <Plus size={14} /> Tambah
-              </button>
-            </div>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-white/10">
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-400">Crypto</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-400">Network</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-400">Alamat Wallet</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-400">QR</th>
-                  <th className="text-left px-4 py-3 text-xs font-medium text-gray-400">Status</th>
-                  <th className="text-right px-4 py-3 text-xs font-medium text-gray-400">Aksi</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {cryptoWallets.length === 0 ? (
-                  <tr><td colSpan={6} className="text-center py-8 text-gray-500">Belum ada dompet crypto</td></tr>
-                ) : (
-                  cryptoWallets.map((w) => (
-                    <tr key={w.id} className="hover:bg-white/[0.02]">
-                      <td className="px-4 py-3 font-medium text-white">{w.crypto}</td>
-                      <td className="px-4 py-3 text-gray-300">{w.network}</td>
-                      <td className="px-4 py-3 text-gray-400 font-mono text-xs max-w-[160px] truncate">{w.wallet_address}</td>
-                      <td className="px-4 py-3">
-                        {w.qr_code_url ? (
-                          <button onClick={() => setViewQR(w)} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 transition-all">
-                            <QrCode size={14} />
-                          </button>
-                        ) : <span className="text-gray-600 text-xs">-</span>}
-                      </td>
-                      <td className="px-4 py-3">{statusBadge(w.status)}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center justify-end gap-1">
-                          <button onClick={() => toggleCryptoStatus(w)} className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-all">
-                            {w.status === 'active' ? <ToggleRight size={16} className="text-green-400" /> : <ToggleLeft size={16} />}
-                          </button>
-                          <button onClick={() => setCryptoModal(w)} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 transition-all">
-                            <Edit2 size={14} />
-                          </button>
-                          <button onClick={() => deleteCryptoWallet(w.id)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-all">
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* Bank Account Modal */}
-      {bankModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#111111] border border-white/10 rounded-xl w-full max-w-md">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
-              <h3 className="text-sm font-semibold text-white">{bankModal.id ? 'Edit' : 'Tambah'} Akun Bank</h3>
-              <button onClick={() => setBankModal(null)} className="text-gray-400 hover:text-white"><X size={16} /></button>
-            </div>
-            <div className="p-5 space-y-4">
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">Mata Uang</label>
-                <select value={bankModal.currency || 'MYR'} onChange={(e) => setBankModal((m) => ({ ...m, currency: e.target.value }))}
-                  className="w-full bg-[#1a1a1a] border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
-                  {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-              {[['bank_name', 'Nama Bank'], ['account_number', 'Nomor Rekening'], ['account_holder', 'Nama Pemilik'], ['swift_code', 'Kode SWIFT (opsional)']].map(([field, label]) => (
-                <div key={field}>
-                  <label className="block text-xs text-gray-400 mb-1">{label}</label>
-                  <input type="text" value={(bankModal as Record<string, string>)[field] || ''}
-                    onChange={(e) => setBankModal((m) => ({ ...m, [field]: e.target.value }))}
-                    className="w-full bg-[#1a1a1a] border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500" />
-                </div>
-              ))}
-              <div className="flex items-center justify-between">
-                <label className="text-sm text-gray-300">Status Aktif</label>
-                <button onClick={() => setBankModal((m) => ({ ...m, status: m?.status === 'active' ? 'inactive' : 'active' }))}
-                  className={`w-10 h-5 rounded-full transition-colors ${bankModal.status === 'active' ? 'bg-green-500' : 'bg-gray-600'}`}>
-                  <div className={`w-4 h-4 bg-white rounded-full mx-0.5 transition-transform ${bankModal.status === 'active' ? 'translate-x-5' : 'translate-x-0'}`} />
+      ) : (
+        <>
+          {/* Bank Accounts Tab */}
+          {activeTab === 'bank' && (
+            <div className="space-y-3">
+              <div className="flex justify-end">
+                <button onClick={() => setBankModal({ currency: 'USD', status: 'active' })}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm text-white font-medium transition-colors">
+                  <Plus size={14} /> Tambah Bank
                 </button>
               </div>
+              <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-white/10">
+                        <th className="text-left px-4 py-3 text-xs font-medium text-gray-400">Bank</th>
+                        <th className="text-left px-4 py-3 text-xs font-medium text-gray-400">No. Rekening</th>
+                        <th className="text-left px-4 py-3 text-xs font-medium text-gray-400">Mata Uang</th>
+                        <th className="text-left px-4 py-3 text-xs font-medium text-gray-400">Status</th>
+                        <th className="text-right px-4 py-3 text-xs font-medium text-gray-400">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {banks.length === 0 ? (
+                        <tr><td colSpan={5} className="text-center py-8 text-gray-500">Belum ada akun bank</td></tr>
+                      ) : banks.map(b => (
+                        <tr key={b.id} className="hover:bg-white/[0.02] transition-colors">
+                          <td className="px-4 py-3">
+                            <p className="text-white text-sm font-medium">{b.bank_name}</p>
+                            <p className="text-gray-500 text-xs">{b.account_holder}</p>
+                          </td>
+                          <td className="px-4 py-3 text-gray-400 font-mono text-xs">{b.account_number}</td>
+                          <td className="px-4 py-3">
+                            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400">{b.currency}</span>
+                          </td>
+                          <td className="px-4 py-3"><StatusToggle status={b.status} onToggle={() => toggleBank(b.id)} /></td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center justify-end gap-1">
+                              <button onClick={() => setBankModal({ ...b })} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 transition-all"><Edit2 size={14} /></button>
+                              <button onClick={() => deleteBank(b.id)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-all"><Trash2 size={14} /></button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
-            <div className="flex gap-3 px-5 py-4 border-t border-white/10">
-              <button onClick={() => setBankModal(null)} className="flex-1 py-2 rounded-lg border border-white/10 text-sm text-gray-400 hover:text-white">Batal</button>
-              <button onClick={saveBankAccount} disabled={bankLoading} className="flex-1 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-sm text-white font-medium disabled:opacity-50">
-                {bankLoading ? 'Menyimpan...' : 'Simpan'}
+          )}
+
+          {/* Instant Payment Tab */}
+          {activeTab === 'instant' && (
+            <div className="space-y-3">
+              <div className="flex justify-end">
+                <button onClick={() => setInstantModal({ status: 'active' })}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm text-white font-medium transition-colors">
+                  <Plus size={14} /> Tambah Instant
+                </button>
+              </div>
+              <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-white/10">
+                        <th className="text-left px-4 py-3 text-xs font-medium text-gray-400">Provider</th>
+                        <th className="text-left px-4 py-3 text-xs font-medium text-gray-400">Info Akun</th>
+                        <th className="text-left px-4 py-3 text-xs font-medium text-gray-400">Status</th>
+                        <th className="text-right px-4 py-3 text-xs font-medium text-gray-400">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {instants.length === 0 ? (
+                        <tr><td colSpan={4} className="text-center py-8 text-gray-500">Belum ada akun instant</td></tr>
+                      ) : instants.map(i => (
+                        <tr key={i.id} className="hover:bg-white/[0.02] transition-colors">
+                          <td className="px-4 py-3 text-white font-medium">{i.method}</td>
+                          <td className="px-4 py-3 text-gray-400 text-xs">{i.account_info}</td>
+                          <td className="px-4 py-3"><StatusToggle status={i.status} onToggle={() => toggleInstant(i.id)} /></td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center justify-end gap-1">
+                              <button onClick={() => setInstantModal({ ...i })} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 transition-all"><Edit2 size={14} /></button>
+                              <button onClick={() => deleteInstant(i.id)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-all"><Trash2 size={14} /></button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Crypto Wallets Tab */}
+          {activeTab === 'crypto' && (
+            <div className="space-y-3">
+              <div className="flex justify-end">
+                <button onClick={() => setCryptoModal({ status: 'active' })}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm text-white font-medium transition-colors">
+                  <Plus size={14} /> Tambah Wallet
+                </button>
+              </div>
+              <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-white/10">
+                        <th className="text-left px-4 py-3 text-xs font-medium text-gray-400">Crypto</th>
+                        <th className="text-left px-4 py-3 text-xs font-medium text-gray-400">Network</th>
+                        <th className="text-left px-4 py-3 text-xs font-medium text-gray-400">Alamat Wallet</th>
+                        <th className="text-left px-4 py-3 text-xs font-medium text-gray-400">Status</th>
+                        <th className="text-right px-4 py-3 text-xs font-medium text-gray-400">Aksi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5">
+                      {cryptos.length === 0 ? (
+                        <tr><td colSpan={5} className="text-center py-8 text-gray-500">Belum ada wallet crypto</td></tr>
+                      ) : cryptos.map(c => (
+                        <tr key={c.id} className="hover:bg-white/[0.02] transition-colors">
+                          <td className="px-4 py-3 text-white font-medium">{c.crypto}</td>
+                          <td className="px-4 py-3">
+                            <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400">{c.network}</span>
+                          </td>
+                          <td className="px-4 py-3 text-gray-400 font-mono text-xs truncate max-w-[180px]">{c.wallet_address}</td>
+                          <td className="px-4 py-3"><StatusToggle status={c.status} onToggle={() => toggleCrypto(c.id)} /></td>
+                          <td className="px-4 py-3">
+                            <div className="flex items-center justify-end gap-1">
+                              <button onClick={() => setCryptoModal({ ...c })} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 transition-all"><Edit2 size={14} /></button>
+                              <button onClick={() => deleteCrypto(c.id)} className="p-1.5 rounded-lg text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-all"><Trash2 size={14} /></button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Bank Modal */}
+      {bankModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
+          <div className="bg-[#111111] border border-white/10 rounded-xl p-6 w-full max-w-md">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-semibold text-white">{bankModal.id ? 'Edit' : 'Tambah'} Akun Bank</h3>
+              <button onClick={() => setBankModal(null)} className="text-gray-400 hover:text-white"><X size={18} /></button>
+            </div>
+            <div className="space-y-3">
+              {[['bank_name', 'Nama Bank'], ['account_number', 'No. Rekening'], ['account_holder', 'Nama Pemilik'], ['currency', 'Mata Uang'], ['swift_code', 'SWIFT Code (opsional)']].map(([key, label]) => (
+                <div key={key}>
+                  <label className="text-xs text-gray-400 mb-1 block">{label}</label>
+                  <input
+                    value={(bankModal as any)[key] || ''}
+                    onChange={(e) => setBankModal(prev => ({ ...prev, [key]: e.target.value }))}
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2 mt-4">
+              <button onClick={saveBank} disabled={actionLoading}
+                className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm text-white font-medium transition-colors disabled:opacity-50">
+                {actionLoading ? 'Menyimpan...' : 'Simpan'}
               </button>
+              <button onClick={() => setBankModal(null)} className="flex-1 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-sm text-gray-400 font-medium transition-colors">Batal</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Instant Account Modal */}
+      {/* Instant Modal */}
       {instantModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#111111] border border-white/10 rounded-xl w-full max-w-md">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
+          <div className="bg-[#111111] border border-white/10 rounded-xl p-6 w-full max-w-md">
+            <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold text-white">{instantModal.id ? 'Edit' : 'Tambah'} Instant Payment</h3>
-              <button onClick={() => setInstantModal(null)} className="text-gray-400 hover:text-white"><X size={16} /></button>
+              <button onClick={() => setInstantModal(null)} className="text-gray-400 hover:text-white"><X size={18} /></button>
             </div>
-            <div className="p-5 space-y-4">
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">Metode</label>
-                <select value={instantModal.method || ''} onChange={(e) => setInstantModal((m) => ({ ...m, method: e.target.value }))}
-                  className="w-full bg-[#1a1a1a] border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
-                  {INSTANT_METHODS.map((m) => <option key={m} value={m}>{m}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">Info Akun (nomor/email/ID)</label>
-                <input type="text" value={instantModal.account_info || ''} onChange={(e) => setInstantModal((m) => ({ ...m, account_info: e.target.value }))}
-                  className="w-full bg-[#1a1a1a] border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500" />
-              </div>
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">Mata Uang (pisahkan dengan koma)</label>
-                <input type="text" value={Array.isArray(instantModal.currencies) ? instantModal.currencies.join(', ') : (instantModal.currencies as unknown as string) || ''}
-                  onChange={(e) => setInstantModal((m) => ({ ...m, currencies: e.target.value.split(',').map((c) => c.trim()) }))}
-                  className="w-full bg-[#1a1a1a] border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
-                  placeholder="MYR, SGD, USD" />
-              </div>
+            <div className="space-y-3">
+              {[['method', 'Provider (e.g. Touch n Go)'], ['account_info', 'Info Akun / No. HP']].map(([key, label]) => (
+                <div key={key}>
+                  <label className="text-xs text-gray-400 mb-1 block">{label}</label>
+                  <input
+                    value={(instantModal as any)[key] || ''}
+                    onChange={(e) => setInstantModal(prev => ({ ...prev, [key]: e.target.value }))}
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+              ))}
             </div>
-            <div className="flex gap-3 px-5 py-4 border-t border-white/10">
-              <button onClick={() => setInstantModal(null)} className="flex-1 py-2 rounded-lg border border-white/10 text-sm text-gray-400 hover:text-white">Batal</button>
-              <button onClick={saveInstantAccount} disabled={instantLoading} className="flex-1 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-sm text-white font-medium disabled:opacity-50">
-                {instantLoading ? 'Menyimpan...' : 'Simpan'}
+            <div className="flex gap-2 mt-4">
+              <button onClick={saveInstant} disabled={actionLoading}
+                className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm text-white font-medium transition-colors disabled:opacity-50">
+                {actionLoading ? 'Menyimpan...' : 'Simpan'}
               </button>
+              <button onClick={() => setInstantModal(null)} className="flex-1 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-sm text-gray-400 font-medium transition-colors">Batal</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Crypto Wallet Modal */}
+      {/* Crypto Modal */}
       {cryptoModal && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#111111] border border-white/10 rounded-xl w-full max-w-md">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
+          <div className="bg-[#111111] border border-white/10 rounded-xl p-6 w-full max-w-md">
+            <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-semibold text-white">{cryptoModal.id ? 'Edit' : 'Tambah'} Crypto Wallet</h3>
-              <button onClick={() => setCryptoModal(null)} className="text-gray-400 hover:text-white"><X size={16} /></button>
+              <button onClick={() => setCryptoModal(null)} className="text-gray-400 hover:text-white"><X size={18} /></button>
             </div>
-            <div className="p-5 space-y-4">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">Crypto</label>
-                  <select value={cryptoModal.crypto || 'USDT'} onChange={(e) => setCryptoModal((m) => ({ ...m, crypto: e.target.value }))}
-                    className="w-full bg-[#1a1a1a] border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
-                    {CRYPTOS.map((c) => <option key={c} value={c}>{c}</option>)}
-                  </select>
+            <div className="space-y-3">
+              {[['crypto', 'Nama Crypto (e.g. USDT)'], ['network', 'Network (e.g. TRC20)'], ['wallet_address', 'Alamat Wallet']].map(([key, label]) => (
+                <div key={key}>
+                  <label className="text-xs text-gray-400 mb-1 block">{label}</label>
+                  <input
+                    value={(cryptoModal as any)[key] || ''}
+                    onChange={(e) => setCryptoModal(prev => ({ ...prev, [key]: e.target.value }))}
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
+                  />
                 </div>
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">Network</label>
-                  <select value={cryptoModal.network || 'TRC20'} onChange={(e) => setCryptoModal((m) => ({ ...m, network: e.target.value }))}
-                    className="w-full bg-[#1a1a1a] border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
-                    {NETWORKS.map((n) => <option key={n} value={n}>{n}</option>)}
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">Alamat Wallet</label>
-                <input type="text" value={cryptoModal.wallet_address || ''} onChange={(e) => setCryptoModal((m) => ({ ...m, wallet_address: e.target.value }))}
-                  className="w-full bg-[#1a1a1a] border border-white/10 rounded-lg px-3 py-2 text-sm text-white font-mono text-xs focus:outline-none focus:border-blue-500"
-                  placeholder="Masukkan alamat wallet..." />
-              </div>
-              <p className="text-xs text-gray-500">QR Code akan dibuat otomatis saat menyimpan</p>
+              ))}
             </div>
-            <div className="flex gap-3 px-5 py-4 border-t border-white/10">
-              <button onClick={() => setCryptoModal(null)} className="flex-1 py-2 rounded-lg border border-white/10 text-sm text-gray-400 hover:text-white">Batal</button>
-              <button onClick={saveCryptoWallet} disabled={cryptoLoading} className="flex-1 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-sm text-white font-medium disabled:opacity-50">
-                {cryptoLoading ? 'Menyimpan...' : 'Simpan'}
+            <div className="flex gap-2 mt-4">
+              <button onClick={saveCrypto} disabled={actionLoading}
+                className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm text-white font-medium transition-colors disabled:opacity-50">
+                {actionLoading ? 'Menyimpan...' : 'Simpan'}
               </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* View QR Modal */}
-      {viewQR && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-[#111111] border border-white/10 rounded-xl w-full max-w-sm">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-white/10">
-              <h3 className="text-sm font-semibold text-white">{viewQR.crypto} ({viewQR.network}) QR Code</h3>
-              <button onClick={() => setViewQR(null)} className="text-gray-400 hover:text-white"><X size={16} /></button>
-            </div>
-            <div className="p-5 flex flex-col items-center gap-4">
-              <img src={viewQR.qr_code_url} alt={`QR Code ${viewQR.crypto}`} className="w-48 h-48 rounded-lg bg-white p-2" />
-              <p className="text-xs text-gray-400 font-mono text-center break-all">{viewQR.wallet_address}</p>
+              <button onClick={() => setCryptoModal(null)} className="flex-1 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-sm text-gray-400 font-medium transition-colors">Batal</button>
             </div>
           </div>
         </div>

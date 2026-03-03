@@ -41,17 +41,20 @@ export function useMarketPrices(refreshInterval = 30000): MarketData {
 
   const fetchPrices = useCallback(async () => {
     try {
-      const [cryptoRes, forexRes] = await Promise.all([
+      const [cryptoRes, forexRes] = await Promise.allSettled([
         fetch(`/api/prices/crypto?ids=${CRYPTO_IDS}&per_page=5`),
         fetch('/api/prices/forex'),
       ]);
 
-      if (!cryptoRes.ok && !forexRes.ok) {
-        throw new Error('Market data endpoints unavailable');
-      }
+      const cryptoData =
+        cryptoRes.status === 'fulfilled' && cryptoRes.value.ok
+          ? await cryptoRes.value.json().catch(() => ({ success: false, data: [] }))
+          : { success: false, data: [] };
 
-      const cryptoData = cryptoRes.ok ? await cryptoRes.json() : { success: false, data: [] };
-      const forexData = forexRes.ok ? await forexRes.json() : { success: false, data: {} };
+      const forexData =
+        forexRes.status === 'fulfilled' && forexRes.value.ok
+          ? await forexRes.value.json().catch(() => ({ success: false, data: {} }))
+          : { success: false, data: {} };
 
       if (cryptoData.success && cryptoData.data.length > 0) {
         setCrypto(cryptoData.data);
@@ -62,8 +65,8 @@ export function useMarketPrices(refreshInterval = 30000): MarketData {
       setLastUpdated(new Date());
       setError(null);
     } catch (err) {
-      setError('Failed to fetch market data');
       console.error('Market price fetch error:', err);
+      // Don't set error state — keep showing existing data
     } finally {
       setLoading(false);
     }

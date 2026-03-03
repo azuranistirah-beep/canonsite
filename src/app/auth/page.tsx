@@ -4,6 +4,58 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '../../lib/supabase/client';
 
+
+// ─── Safe ErrorBoundary — never accesses window.__ErrorBoundary ──────────────
+class AuthErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; errorMsg: string }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, errorMsg: '' };
+  }
+  static getDerivedStateFromError(error: unknown) {
+    const msg =
+      error instanceof Error
+        ? error.message
+        : typeof error === 'string'
+        ? error
+        : JSON.stringify(error);
+    return { hasError: true, errorMsg: msg };
+  }
+  componentDidCatch(error: unknown, info: React.ErrorInfo) {
+    console.error('[AuthErrorBoundary] Caught render error:', error, info?.componentStack);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div
+          className="min-h-screen flex items-center justify-center p-4"
+          style={{ background: '#0a0e1a' }}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl p-6"
+            style={{
+              background: 'rgba(239,68,68,0.08)',
+              border: '1px solid rgba(239,68,68,0.3)',
+            }}
+          >
+            <p className="text-red-400 font-bold mb-2">⚠ Render Error (caught safely)</p>
+            <p className="text-red-300 text-sm break-all">{this.state.errorMsg}</p>
+            <button
+              onClick={() => this.setState({ hasError: false, errorMsg: '' })}
+              className="mt-4 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 function getPasswordStrength(password: string): { strength: 'weak' | 'medium' | 'strong'; score: number; label: string } {
   let score = 0;
   if (password.length >= 8) score++;
@@ -16,20 +68,12 @@ function getPasswordStrength(password: string): { strength: 'weak' | 'medium' | 
   return { strength: 'strong', score, label: 'Strong' };
 }
 
-export default function AuthPage() {
+const ADMIN_EMAIL = 'support@investoft.com';
+
+function AuthPageInner() {
   const router = useRouter();
-  const { user, loading, signUp, signIn, rateLimited } = useAuth();
+  const { user, loading, signUp, signIn, rateLimited, setHardNavigating } = useAuth();
   const redirectingRef = React.useRef(false);
-
-  // Helper to get redirect destination from URL query param
-  const getRedirectTarget = () => {
-    if (typeof window === 'undefined') return '/trade';
-    const params = new URLSearchParams(window.location.search);
-    return params.get('redirect') || '/trade';
-  };
-
-  // Supabase project URL for diagnostic messages (no auth calls here)
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -41,18 +85,14 @@ export default function AuthPage() {
   const [siShowPass, setSiShowPass] = useState(false);
   const [siLoading, setSiLoading] = useState(false);
   const [siError, setSiError] = useState('');
-  // Error category for contextual actions
   const [siErrorType, setSiErrorType] = useState<'email_not_confirmed' | 'invalid_credentials' | 'env_mismatch' | 'other' | null>(null);
   const [resendLoading, setResendLoading] = useState(false);
   const [resendMsg, setResendMsg] = useState('');
-  // Rate limit cooldown for resend confirmation
   const [resendCooldown, setResendCooldown] = useState(0);
   const resendCooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Rate limit cooldown for sign-in
   const [siCooldown, setSiCooldown] = useState(0);
   const siCooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  // Single-flight guard: prevents double submission
   const isSigningInRef = useRef(false);
 
   // Sign Up fields
@@ -74,7 +114,6 @@ export default function AuthPage() {
   const [otpError, setOtpError] = useState('');
   const [otpSent, setOtpSent] = useState(false);
   const [pendingPhone, setPendingPhone] = useState('');
-  // Rate limit cooldown for OTP resend
   const [otpCooldown, setOtpCooldown] = useState(0);
   const otpCooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -83,21 +122,22 @@ export default function AuthPage() {
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotMsg, setForgotMsg] = useState('');
-  // Rate limit cooldown for forgot password
   const [forgotCooldown, setForgotCooldown] = useState(0);
   const forgotCooldownRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const passwordStrength = getPasswordStrength(suPassword);
 
-  // If already logged in, redirect to dashboard
+  // If already logged in, redirect based on email
+  // Only fires if we haven't already triggered a redirect from handleSignIn
   useEffect(() => {
     if (!loading && user && !redirectingRef.current) {
       redirectingRef.current = true;
-      router.replace(getRedirectTarget());
+      const dest = user.email === ADMIN_EMAIL ? '/admin' : '/trade';
+      window.location.href = dest;
     }
-  }, [user, loading, router]);
+  }, [user, loading]);
 
-  // ─── Load remembered email on mount ─────────────────────────────────────────
+  // Load remembered email on mount
   useEffect(() => {
     try {
       const remembered = localStorage.getItem('investoft_remember_email');
@@ -105,11 +145,8 @@ export default function AuthPage() {
         setSiEmail(remembered);
         setSiRemember(true);
       }
-    } catch (e) {
-      // localStorage not available
-    }
+    } catch (e) {}
 
-    // Restore 429 cooldown from sessionStorage if still active
     try {
       const cooldownUntil = sessionStorage.getItem('investoft_si_cooldown_until');
       if (cooldownUntil) {
@@ -120,9 +157,20 @@ export default function AuthPage() {
           sessionStorage.removeItem('investoft_si_cooldown_until');
         }
       }
-    } catch (e) {
-      // sessionStorage not available
-    }
+    } catch (e) {}
+
+    // Show error from URL query param (e.g. from /auth/callback redirect)
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const urlError = params.get('error');
+      if (urlError) {
+        setSiError(decodeURIComponent(urlError));
+        setSiErrorType('other');
+        // Clean up URL without reload
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, '', cleanUrl);
+      }
+    } catch (e) {}
   }, []);
 
   // Cleanup cooldown intervals on unmount
@@ -192,17 +240,17 @@ export default function AuthPage() {
       });
       if (error) {
         if (isRateLimitError(error.message)) {
-          setResendMsg('Terlalu banyak permintaan. Harap tunggu 60 detik sebelum mencoba lagi.');
+          setResendMsg('Too many requests. Please wait 60 seconds before trying again.');
           startCooldown(setResendCooldown, resendCooldownRef, 60);
         } else {
-          setResendMsg('Gagal mengirim ulang: ' + error.message);
+          setResendMsg('Failed to resend: ' + error.message);
         }
       } else {
-        setResendMsg('Email konfirmasi telah dikirim ulang. Periksa kotak masuk Anda.');
+        setResendMsg('Confirmation email has been resent. Please check your inbox.');
         startCooldown(setResendCooldown, resendCooldownRef, 60);
       }
     } catch (err: any) {
-      setResendMsg('Gagal mengirim ulang email konfirmasi.');
+      setResendMsg('Failed to send confirmation email.');
     } finally {
       setResendLoading(false);
     }
@@ -210,142 +258,58 @@ export default function AuthPage() {
 
   async function handleSignIn(e: React.FormEvent) {
     e.preventDefault();
+    try {
+      await _handleSignInCore();
+    } catch (unexpectedErr: unknown) {
+      const msg =
+        unexpectedErr instanceof Error
+          ? unexpectedErr.message
+          : typeof unexpectedErr === 'string'
+          ? unexpectedErr
+          : JSON.stringify(unexpectedErr);
+      console.error('[Auth] handleSignIn: unexpected top-level error:', unexpectedErr);
+      setSiError('Error not expected: ' + msg);
+      setSiErrorType('other');
+    } finally {
+      isSigningInRef.current = false;
+      setSiLoading(false);
+    }
+  }
+
+  async function _handleSignInCore() {
     setSiError('');
     setSiErrorType(null);
     setResendMsg('');
-    if (!siEmail) { setSiError('Masukkan email Anda'); return; }
-    if (!siPassword) { setSiError('Masukkan password Anda'); return; }
+    if (!siEmail) { setSiError('Please enter your email'); return; }
+    if (!siPassword) { setSiError('Please enter your password'); return; }
 
-    // ── Check cooldown via sessionStorage (synchronous, not relying on React state) ──
     try {
       const cooldownUntil = sessionStorage.getItem('investoft_si_cooldown_until');
       if (cooldownUntil && parseInt(cooldownUntil, 10) > Date.now()) {
         const remaining = Math.ceil((parseInt(cooldownUntil, 10) - Date.now()) / 1000);
-        setSiError(`Terlalu banyak percobaan login. Harap tunggu ${remaining} detik sebelum mencoba lagi.`);
+        setSiError(`Too many login attempts. Please wait ${remaining} seconds before trying again.`);
         return;
       }
-    } catch (e) { /* ignore */ }
+    } catch (e) {}
 
     if (siCooldown > 0) return;
 
-    // ── Single-flight guard: block duplicate submissions ──────────────────────
     if (isSigningInRef.current) {
-      if (process.env.NODE_ENV === 'development') {
-        console.warn('[Auth] handleSignIn: already in progress, ignoring duplicate submit');
-      }
+      console.warn('[Auth] handleSignIn: already in progress, ignoring duplicate submit');
       return;
-    }
-
-    // ── SessionStorage auth lock (prevents multi-tab / double-render race) ────
-    try {
-      const lockUntil = sessionStorage.getItem('investoft_auth_lock');
-      if (lockUntil && parseInt(lockUntil, 10) > Date.now()) {
-        setSiError('Login sedang diproses. Harap tunggu sebentar.');
-        return;
-      }
-      // Set lock for 10 seconds
-      sessionStorage.setItem('investoft_auth_lock', String(Date.now() + 10000));
-    } catch (e) {
-      // sessionStorage not available — continue without lock
     }
 
     isSigningInRef.current = true;
     setSiLoading(true);
 
-    // Safety timeout: if no response in 10 seconds, reset loading
-    const timeoutId = setTimeout(() => {
-      isSigningInRef.current = false;
-      try { sessionStorage.removeItem('investoft_auth_lock'); } catch (e) { /* ignore */ }
-      setSiLoading(false);
-      setSiError('Login timeout. Periksa koneksi internet Anda dan coba lagi.');
-      setSiErrorType('other');
-    }, 10000);
-
+    // ── STEP 1: Sign In ──────────────────────────────────────────────────────
+    let sessionData: any;
     try {
-      console.log('[Auth] Calling signIn for:', siEmail);
-      const sessionData = await signIn(siEmail, siPassword);
-      clearTimeout(timeoutId);
-
-      console.log('[Auth] signIn result — session exists:', !!sessionData?.session, 'user exists:', !!sessionData?.user);
-
-      if (sessionData?.session) {
-        // ─── Remember Me: save or clear email ───────────────────────────────
-        try {
-          if (siRemember) {
-            localStorage.setItem('investoft_remember_email', siEmail);
-            localStorage.setItem('investoft_remember_expiry', String(Date.now() + 30 * 24 * 60 * 60 * 1000));
-          } else {
-            localStorage.removeItem('investoft_remember_email');
-            localStorage.removeItem('investoft_remember_expiry');
-          }
-        } catch (e) {
-          // localStorage not available
-        }
-
-        // SUCCESS: session exists — check is_admin before redirecting
-        redirectingRef.current = true;
-        setSiLoading(false);
-
-        // Fetch user profile to determine redirect destination
-        try {
-          const supabaseClient = createClient();
-          const userId = sessionData.session.user.id;
-
-          if (process.env.NODE_ENV === 'development') {
-            console.log('[Auth] Login success. Session user id:', userId);
-          }
-
-          const { data: profile, error: profileError } = await supabaseClient
-            .from('user_profiles')
-            .select('is_admin, role')
-            .eq('id', userId)
-            .single();
-
-          if (process.env.NODE_ENV === 'development') {
-            console.log('[Auth] user_profiles query result:', { profile, error: profileError?.message });
-            console.log('[Auth] is_admin value:', profile?.is_admin);
-          }
-
-          if (profileError) {
-            // Query failed — do NOT assume non-admin. Log error and fall back to /trade.
-            console.error('[Auth] Failed to fetch user_profiles:', profileError.message, '— falling back to /trade');
-            router.replace('/trade');
-            return;
-          }
-
-          const isAdmin = profile?.is_admin === true || profile?.role === 'admin';
-
-          if (isAdmin) {
-            if (process.env.NODE_ENV === 'development') {
-              console.log('[Auth] User is admin — redirecting to /admin');
-            }
-            router.replace('/admin');
-          } else {
-            if (process.env.NODE_ENV === 'development') {
-              console.log('[Auth] User is not admin — redirecting to /trade');
-            }
-            router.replace('/trade');
-          }
-        } catch (profileErr) {
-          console.error('[Auth] Unexpected error fetching profile:', profileErr, '— falling back to /trade');
-          router.replace('/trade');
-        }
-      } else {
-        // No error thrown but session is null — env/config mismatch
-        const projectRefDisplay = supabaseUrl.replace('https://', '').split('.')[0];
-        setSiError(
-          `Login tidak menghasilkan sesi (tidak ada error dari Supabase). ` +
-          `Project ref: ${projectRefDisplay}. ` +
-          `Kemungkinan: konfigurasi Supabase client tidak cocok atau sesi tidak tersimpan. ` +
-          `User ada: ${!!sessionData?.user}.`
-        );
-        setSiErrorType('env_mismatch');
-      }
+      sessionData = await signIn(siEmail, siPassword);
     } catch (err: any) {
-      clearTimeout(timeoutId);
       const msg: string = err?.message || err?.error_description || String(err) || '';
       const status: number | undefined = err?.status;
-      console.error('[Auth] signIn threw error — message:', msg, 'status:', status);
+      console.error('[Auth] signInWithPassword error:', msg, 'status:', status);
 
       if (
         msg.toLowerCase().includes('email not confirmed') ||
@@ -353,81 +317,92 @@ export default function AuthPage() {
         msg.toLowerCase().includes('confirm your email')
       ) {
         setSiError(
-          `Email belum dikonfirmasi. Periksa kotak masuk Anda dan klik tautan verifikasi, ` +
-          `atau klik tombol di bawah untuk mengirim ulang email konfirmasi.` +
-          (status ? ` (status: ${status})` : '')
+          `Email not confirmed. Please check your inbox and click the verification link, ` +
+          `or click the button below to resend the confirmation email.`
         );
         setSiErrorType('email_not_confirmed');
       } else if (
         msg.toLowerCase().includes('invalid login credentials') ||
         msg.toLowerCase().includes('invalid_credentials') ||
         msg.toLowerCase().includes('invalid email or password') ||
-        msg.toLowerCase().includes('wrong password') ||
         status === 400
       ) {
-        setSiError(
-          `${msg || 'Email atau password salah.'}` +
-          (status ? ` (status: ${status})` : '') +
-          ` Gunakan "Lupa password?" untuk mereset password Anda.`
-        );
+        setSiError(`Incorrect email or password. Use "Forgot password?" to reset your password.`);
         setSiErrorType('invalid_credentials');
-      } else if (msg.toLowerCase().includes('too many requests') || msg.toLowerCase().includes('rate limit') || isRateLimitError(msg) || status === 429) {
-        setSiError(`Terlalu banyak percobaan login. Harap tunggu 60 detik sebelum mencoba lagi.`);
+      } else if (isRateLimitError(msg) || status === 429) {
+        setSiError(`Too many login attempts. Please wait 60 seconds before trying again.`);
         setSiErrorType('other');
-        // Persist cooldown in sessionStorage so reload doesn't bypass it
-        try {
-          sessionStorage.setItem('investoft_si_cooldown_until', String(Date.now() + 60000));
-        } catch (e) { /* ignore */ }
+        try { sessionStorage.setItem('investoft_si_cooldown_until', String(Date.now() + 60000)); } catch (e) {}
         startCooldown(setSiCooldown, siCooldownRef, 60);
-        // Reset guards so user can retry after cooldown expires
-        isSigningInRef.current = false;
-        setSiLoading(false);
-        try { sessionStorage.removeItem('investoft_auth_lock'); } catch (e) { /* ignore */ }
-        // Return early so finally block doesn't double-reset
-        return;
-      } else if (msg.toLowerCase().includes('sign-in already in progress')) {
-        // Silently ignore duplicate call errors — UI already shows loading
-        return;
       } else if (msg.toLowerCase().includes('network') || msg.toLowerCase().includes('fetch')) {
-        setSiError('Koneksi gagal. Periksa koneksi internet Anda dan coba lagi.');
+        setSiError('Connection failed. Please check your internet connection and try again.');
         setSiErrorType('other');
       } else {
-        // Show exact Supabase error message
-        setSiError(msg || 'Login gagal. Silakan coba lagi.');
+        setSiError(msg || 'Login failed. Please try again.');
         setSiErrorType('other');
       }
-    } finally {
-      clearTimeout(timeoutId);
-      isSigningInRef.current = false;
-      try { sessionStorage.removeItem('investoft_auth_lock'); } catch (e) { /* ignore */ }
-      setSiLoading(false);
+      return;
     }
+
+    // ── STEP 2: Validate session ─────────────────────────────────────────────
+    const session = sessionData?.session ?? null;
+    const sessionUser = session?.user ?? sessionData?.user ?? null;
+
+    console.log('[LOGIN_OK] User:', sessionUser?.email, '| Session:', session ? 'EXISTS' : 'NULL');
+
+    if (!session || !sessionUser) {
+      setSiError('Login did not produce a session. Possible Supabase configuration mismatch.');
+      setSiErrorType('env_mismatch');
+      return;
+    }
+
+    // ── Remember Me ──────────────────────────────────────────────────────────
+    try {
+      if (siRemember) {
+        localStorage.setItem('investoft_remember_email', siEmail);
+      } else {
+        localStorage.removeItem('investoft_remember_email');
+      }
+    } catch (e) {}
+
+    // ── STEP 3: Redirect — set guard first to prevent useEffect double-redirect
+    const userEmail = sessionUser.email ?? '';
+    console.log('[AUTH_REDIRECT] Email:', userEmail, '| Redirecting directly based on email');
+
+    // Set redirectingRef BEFORE window.location.href to prevent
+    // the useEffect above from also triggering a redirect
+    redirectingRef.current = true;
+    // Also set hardNavigating in AuthContext to prevent SIGNED_OUT loop
+    if (typeof setHardNavigating === 'function') {
+      setHardNavigating(true);
+    }
+
+    // Redirect directly to admin or trade based on email
+    const dest = userEmail === ADMIN_EMAIL ? '/admin' : '/trade';
+    window.location.href = dest;
   }
 
+  // ─── Sign Up handler ─────────────────────────────────────────────────────────
   async function handleSignUp(e: React.FormEvent) {
     e.preventDefault();
     setSuError('');
     setSuSuccess('');
     if (!suEmail) { setSuError('Please enter your email'); return; }
-    if (!suPassword) { setSuError('Please enter a password'); return; }
-    if (suPassword.length < 8) { setSuError('Password must be at least 8 characters'); return; }
+    if (!suPassword) { setSuError('Please enter your password'); return; }
     if (suPassword !== suConfirmPass) { setSuError('Passwords do not match'); return; }
-    if (!suTerms) { setSuError('Please agree to the Terms & Conditions'); return; }
+    if (!suTerms) { setSuError('You must agree to the terms and conditions'); return; }
+    if (passwordStrength.strength === 'weak') { setSuError('Password is too weak. Use at least 8 characters with uppercase letters, numbers, and symbols.'); return; }
+
     setSuLoading(true);
     try {
-      await signUp(suEmail, suPassword);
-      setSuSuccess('Registration successful! Please check your email to verify your account.');
-      setSuEmail('');
-      setSuPassword('');
-      setSuConfirmPass('');
-      setSuPhone('');
-      setSuTerms(false);
+      await signUp(suEmail, suPassword, suPhone);
+      setSuSuccess('Account created successfully! Please check your email for confirmation.');
     } catch (err: any) {
-      const msg = err?.message || '';
-      if (msg.includes('already registered') || msg.includes('already been registered') || msg.includes('User already registered')) {
-        setSuError('This email is already registered. Please sign in instead.');
-      } else if (isRateLimitError(msg)) {
-        setSuError('Terlalu banyak permintaan. Harap tunggu beberapa menit sebelum mencoba lagi.');
+      const msg = err?.message || String(err) || '';
+      if (isRateLimitError(msg)) {
+        setSuError('Too many requests. Please wait before trying again.');
+      } else if (msg.toLowerCase().includes('already registered') || msg.toLowerCase().includes('user already exists')) {
+        setSuError('This email is already registered. Please sign in or use a different email.');
       } else {
         setSuError(msg || 'Registration failed. Please try again.');
       }
@@ -436,82 +411,31 @@ export default function AuthPage() {
     }
   }
 
-  async function handleVerifyOtp(e: React.FormEvent) {
-    e.preventDefault();
-    setOtpError('');
-    if (!otpCode) { setOtpError('Please enter the OTP code'); return; }
-    setOtpLoading(true);
-    try {
-      const supabase = createClient();
-      const { error } = await supabase.auth.verifyOtp({
-        phone: pendingPhone,
-        token: otpCode,
-        type: 'sms',
-      });
-      if (error) {
-        setOtpError(error.message || 'Invalid OTP code.');
-      } else {
-        router.replace(getRedirectTarget());
-      }
-    } catch {
-      setOtpError('Failed to verify OTP.');
-    } finally {
-      setOtpLoading(false);
-    }
-  }
-
-  function handleSkipOtp() {
-    setOtpStep(false);
-    setOtpCode('');
-    setOtpError('');
-  }
-
-  async function handleResendOtp() {
-    setOtpError('');
-    if (otpCooldown > 0) return;
-    try {
-      const supabase = createClient();
-      const { error } = await supabase.auth.signInWithOtp({ phone: pendingPhone });
-      if (error) {
-        if (isRateLimitError(error.message)) {
-          setOtpError('Terlalu banyak permintaan OTP. Harap tunggu 60 detik sebelum mencoba lagi.');
-          startCooldown(setOtpCooldown, otpCooldownRef, 60);
-        } else {
-          setOtpError(error.message || 'Failed to resend OTP.');
-        }
-      } else {
-        setOtpSent(true);
-        startCooldown(setOtpCooldown, otpCooldownRef, 60);
-      }
-    } catch {
-      setOtpError('Failed to resend OTP.');
-    }
-  }
-
+  // ─── Forgot Password handler ─────────────────────────────────────────────────
   async function handleForgotPassword(e: React.FormEvent) {
     e.preventDefault();
-    setForgotMsg('');
     if (!forgotEmail) { setForgotMsg('Please enter your email'); return; }
     if (forgotCooldown > 0) return;
     setForgotLoading(true);
+    setForgotMsg('');
     try {
       const supabase = createClient();
       const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo: `${window.location.origin}/auth/callback?type=recovery`,
       });
       if (error) {
         if (isRateLimitError(error.message)) {
-          setForgotMsg('Terlalu banyak permintaan. Harap tunggu 60 detik sebelum mencoba lagi.');
+          setForgotMsg('Too many requests. Please wait 60 seconds before trying again.');
           startCooldown(setForgotCooldown, forgotCooldownRef, 60);
         } else {
-          setForgotMsg('Failed to send reset link. Please try again.');
+          setForgotMsg('Failed to send reset email: ' + error.message);
         }
       } else {
-        setForgotMsg('Password reset link sent! Please check your email.');
+        setForgotMsg('Password reset email has been sent. Please check your inbox.');
         startCooldown(setForgotCooldown, forgotCooldownRef, 60);
       }
-    } catch {
-      setForgotMsg('Failed to send reset link. Please try again.');
+    } catch (err: any) {
+      setForgotMsg('Failed to send password reset email.');
     } finally {
       setForgotLoading(false);
     }
@@ -520,456 +444,355 @@ export default function AuthPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ background: '#0a0e1a' }}>
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-          <p className="text-slate-400 text-sm">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (rateLimited) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ background: '#0a0e1a' }}>
-        <div className="flex flex-col items-center gap-4 max-w-sm text-center px-6">
-          <div className="w-14 h-14 rounded-full bg-yellow-500/20 flex items-center justify-center">
-            <svg className="w-7 h-7 text-yellow-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-            </svg>
-          </div>
-          <h2 className="text-white font-bold text-lg">Terlalu Banyak Request</h2>
-          <p className="text-slate-400 text-sm">Terlalu banyak request ke server autentikasi. Harap tunggu 1 menit lalu reload halaman ini.</p>
-          <button
-            onClick={() => { try { sessionStorage.removeItem('investoft_auth_429_until'); } catch { /* ignore */ } window.location.reload(); }}
-            className="mt-2 px-6 py-2 rounded-xl text-sm font-semibold text-white"
-            style={{ background: 'linear-gradient(135deg, #2563eb, #7c3aed)' }}
-          >
-            Reload Sekarang
-          </button>
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-10 h-10 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+          <p className="text-gray-400 text-sm">Loading...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'linear-gradient(135deg, #0a0e1a 0%, #0d1224 50%, #0a0e1a 100%)' }}>
-      {/* Background decoration */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full opacity-5" style={{ background: 'radial-gradient(circle, #2563eb, transparent)', filter: 'blur(60px)' }} />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 rounded-full opacity-5" style={{ background: 'radial-gradient(circle, #7c3aed, transparent)', filter: 'blur(60px)' }} />
-      </div>
-
-      <div className="w-full max-w-md relative z-10">
+    <div className="min-h-screen flex items-center justify-center p-4" style={{ background: 'linear-gradient(135deg, #0a0e1a 0%, #0d1526 50%, #0a0e1a 100%)' }}>
+      <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 mb-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #2563eb, #7c3aed)' }}>
-              <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="inline-flex items-center gap-2 mb-4">
+            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)' }}>
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
               </svg>
             </div>
-            <span className="text-2xl font-bold text-white">InvesoFT</span>
+            <span className="text-2xl font-bold text-white">Investoft</span>
           </div>
-          <p className="text-slate-400 text-sm">Professional Trading Platform</p>
+          <p className="text-gray-400 text-sm">Professional Trading Platform</p>
         </div>
 
-        {/* OTP Step */}
-        {otpStep ? (
-          <div className="rounded-2xl p-6" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', backdropFilter: 'blur(20px)' }}>
-            <div className="text-center mb-6">
-              <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3" style={{ background: 'rgba(37,99,235,0.15)' }}>
-                <svg className="w-6 h-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                </svg>
-              </div>
-              <h2 className="text-xl font-bold text-white mb-1">Verify Phone</h2>
-              <p className="text-slate-400 text-sm">
-                {otpSent ? `OTP code has been sent to ${pendingPhone}` : 'Enter the OTP code sent to your number'}
-              </p>
-            </div>
-            <form onSubmit={handleVerifyOtp} className="space-y-4">
-              <div>
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-2 block">OTP Code</label>
-                <input
-                  type="text"
-                  value={otpCode}
-                  onChange={(e) => setOtpCode(e.target.value)}
-                  placeholder="Enter 6-digit OTP"
-                  maxLength={6}
-                  className="w-full px-4 py-3 rounded-xl text-white placeholder-slate-500 text-center text-2xl tracking-widest font-bold focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
-                />
-                {otpError && <p className="text-red-400 text-xs mt-1">{otpError}</p>}
-              </div>
-              <button
-                type="submit"
-                disabled={otpLoading}
-                className="w-full py-3 rounded-xl font-bold text-white bg-blue-600 hover:bg-blue-700 transition-all disabled:opacity-60"
-              >
-                {otpLoading ? 'Verifying...' : 'Verify OTP'}
-              </button>
-              <div className="flex gap-2">
-                <button type="button" onClick={handleResendOtp} disabled={otpCooldown > 0} className="flex-1 py-2.5 rounded-xl text-sm text-slate-400 hover:text-white transition-colors disabled:opacity-50" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                  {otpCooldown > 0 ? `Tunggu ${otpCooldown}s` : 'Resend'}
-                </button>
-                <button type="button" onClick={handleSkipOtp} className="flex-1 py-2.5 rounded-xl text-sm text-slate-400 hover:text-white transition-colors" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                  Skip
-                </button>
-              </div>
-            </form>
-          </div>
-        ) : forgotMode ? (
-          /* Forgot Password */
-          <div className="rounded-2xl p-6" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', backdropFilter: 'blur(20px)' }}>
-            <button
-              type="button"
-              onClick={() => { setForgotMode(false); setForgotMsg(''); }}
-              className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors mb-4 text-sm"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-              Back to Sign In
-            </button>
-            <h2 className="text-xl font-bold text-white mb-2">Forgot Password</h2>
-            <p className="text-slate-400 text-sm mb-6">Enter your email to receive a password reset link.</p>
-            <form onSubmit={handleForgotPassword} className="space-y-4">
-              <input
-                type="email"
-                value={forgotEmail}
-                onChange={(e) => setForgotEmail(e.target.value)}
-                placeholder="Email address"
-                className="w-full px-4 py-3 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
-              />
-              {forgotMsg && (
-                <p className={`text-sm ${forgotMsg.includes('Failed') || forgotMsg.includes('Terlalu') ? 'text-red-400' : 'text-green-400'}`}>{forgotMsg}</p>
-              )}
-              <button
-                type="submit"
-                disabled={forgotLoading || forgotCooldown > 0}
-                className="w-full py-3 rounded-xl font-bold text-white bg-blue-600 hover:bg-blue-700 transition-all disabled:opacity-60"
-              >
-                {forgotLoading ? 'Sending...' : forgotCooldown > 0 ? `Tunggu ${forgotCooldown}s...` : 'Send Reset Link'}
-              </button>
-            </form>
-          </div>
-        ) : (
-          /* Main Auth Card */
-          <div
-            className={`rounded-2xl overflow-hidden transition-opacity duration-150 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}
-            style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', backdropFilter: 'blur(20px)' }}
-          >
-            {/* Toggle */}
-            <div className="flex" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+        {/* Card */}
+        <div
+          className="rounded-2xl p-8"
+          style={{
+            background: 'rgba(255,255,255,0.03)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            backdropFilter: 'blur(20px)',
+          }}
+        >
+          {/* Mode Tabs */}
+          {!forgotMode && (
+            <div className="flex mb-6 rounded-xl p-1" style={{ background: 'rgba(255,255,255,0.05)' }}>
               <button
                 onClick={() => switchMode('signin')}
-                className={`flex-1 py-4 text-sm font-bold transition-all relative ${
-                  mode === 'signin' ? 'text-white' : 'text-slate-500 hover:text-slate-300'
+                className={`flex-1 py-2 px-4 rounded-lg text-sm font-semibold transition-all duration-200 ${
+                  mode === 'signin' ?'text-white' :'text-gray-400 hover:text-gray-300'
                 }`}
+                style={mode === 'signin' ? { background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)' } : {}}
               >
                 Sign In
-                {mode === 'signin' && (
-                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500" />
-                )}
               </button>
               <button
                 onClick={() => switchMode('signup')}
-                className={`flex-1 py-4 text-sm font-bold transition-all relative ${
-                  mode === 'signup' ? 'text-white' : 'text-slate-500 hover:text-slate-300'
+                className={`flex-1 py-2 px-4 rounded-lg text-sm font-semibold transition-all duration-200 ${
+                  mode === 'signup' ?'text-white' :'text-gray-400 hover:text-gray-300'
                 }`}
+                style={mode === 'signup' ? { background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)' } : {}}
               >
-                Create Account
-                {mode === 'signup' && (
-                  <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500" />
-                )}
+                Sign Up
               </button>
             </div>
+          )}
 
-            <div className="p-6">
-              {mode === 'signin' ? (
-                <>
-                  <h2 className="text-xl font-bold text-white mb-1">Welcome Back</h2>
-                  <p className="text-slate-400 text-sm mb-6">Sign in to your trading account</p>
+          <div className={`transition-opacity duration-150 ${isTransitioning ? 'opacity-0' : 'opacity-100'}`}>
+            {/* ── FORGOT PASSWORD ── */}
+            {forgotMode ? (
+              <form onSubmit={handleForgotPassword} className="space-y-4">
+                <div className="text-center mb-4">
+                  <h2 className="text-xl font-bold text-white mb-1">Reset Password</h2>
+                  <p className="text-gray-400 text-sm">Enter your email to receive a password reset link</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={forgotEmail}
+                    onChange={(e) => setForgotEmail(e.target.value)}
+                    placeholder="email@example.com"
+                    className="w-full px-4 py-3 rounded-xl text-white placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
+                  />
+                </div>
+                {forgotMsg && (
+                  <p className={`text-sm ${forgotMsg.toLowerCase().includes('sent') || forgotMsg.toLowerCase().includes('check your inbox') ? 'text-green-400' : 'text-red-400'}`}>{forgotMsg}</p>
+                )}
+                <button
+                  type="submit"
+                  disabled={forgotLoading || forgotCooldown > 0}
+                  className="w-full py-3 rounded-xl text-white font-semibold text-sm transition-all duration-200 disabled:opacity-50"
+                  style={{ background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)' }}
+                >
+                  {forgotLoading ? 'Sending...' : forgotCooldown > 0 ? `Wait ${forgotCooldown}s` : 'Send Reset Email'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setForgotMode(false); setForgotMsg(''); }}
+                  className="w-full py-2 text-sm text-gray-400 hover:text-gray-300 transition-colors"
+                >
+                  &#8592; Back to Login
+                </button>
+              </form>
+            ) : mode === 'signin' ? (
+              /* ── SIGN IN ── */
+              <form onSubmit={handleSignIn} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={siEmail}
+                    onChange={(e) => setSiEmail(e.target.value)}
+                    placeholder="email@example.com"
+                    autoComplete="email"
+                    className="w-full px-4 py-3 rounded-xl text-white placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Password</label>
+                  <div className="relative">
+                    <input
+                      type={siShowPass ? 'text' : 'password'}
+                      value={siPassword}
+                      onChange={(e) => setSiPassword(e.target.value)}
+                      placeholder="••••••••"
+                      autoComplete="current-password"
+                      className="w-full px-4 py-3 pr-12 rounded-xl text-white placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setSiShowPass(!siShowPass)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
+                    >
+                      {siShowPass ? (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 4.411m0 0L21 21" />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                </div>
 
-                  <form onSubmit={handleSignIn} className="space-y-4">
-                    <div>
-                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-2 block">Email</label>
-                      <input
-                        type="email"
-                        value={siEmail}
-                        onChange={(e) => setSiEmail(e.target.value)}
-                        placeholder="your@email.com"
-                        autoComplete="email"
-                        className="w-full px-4 py-3 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-2 block">Password</label>
-                      <div className="relative">
-                        <input
-                          type={siShowPass ? 'text' : 'password'}
-                          value={siPassword}
-                          onChange={(e) => setSiPassword(e.target.value)}
-                          placeholder="Enter your password"
-                          autoComplete="current-password"
-                          className="w-full px-4 py-3 pr-12 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setSiShowPass(!siShowPass)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
-                        >
-                          {siShowPass ? (
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 4.411m0 0L21 21" />
-                            </svg>
-                          ) : (
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                            </svg>
-                          )}
-                        </button>
-                      </div>
-                    </div>
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={siRemember}
+                      onChange={(e) => setSiRemember(e.target.checked)}
+                      className="w-4 h-4 rounded border-gray-600 text-blue-500 focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-gray-400">Remember me</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => { setForgotMode(true); setForgotEmail(siEmail); setForgotMsg(''); }}
+                    className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
+                  >
+                    Forgot password?
+                  </button>
+                </div>
 
-                    {/* Remember Me + Forgot Password */}
-                    <div className="flex items-center justify-between">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={siRemember}
-                          onChange={(e) => setSiRemember(e.target.checked)}
-                          className="w-4 h-4 rounded border-slate-600 bg-slate-800 text-blue-500 focus:ring-blue-500"
-                        />
-                        <span className="text-sm text-slate-400">Remember me</span>
-                      </label>
+                {siError && (
+                  <div className="rounded-xl p-3" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)' }}>
+                    <p className="text-red-400 text-sm">{siError}</p>
+                    {siErrorType === 'email_not_confirmed' && (
                       <button
                         type="button"
-                        onClick={() => { setForgotMode(true); setForgotEmail(siEmail); }}
-                        className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
+                        onClick={handleResendConfirmation}
+                        disabled={resendLoading || resendCooldown > 0}
+                        className="mt-2 text-xs text-blue-400 hover:text-blue-300 disabled:opacity-50"
                       >
-                        Forgot password?
+                        {resendLoading ? 'Sending...' : resendCooldown > 0 ? `Resend (${resendCooldown}s)` : 'Resend confirmation email'}
                       </button>
-                    </div>
-
-                    {/* Error message */}
-                    {siError && (
-                      <div className="rounded-xl p-3" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)' }}>
-                        <p className="text-red-400 text-sm">{siError}</p>
-                        {siErrorType === 'email_not_confirmed' && (
-                          <div className="mt-2">
-                            <button
-                              type="button"
-                              onClick={handleResendConfirmation}
-                              disabled={resendLoading || resendCooldown > 0}
-                              className="w-full py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-all disabled:opacity-60"
-                            >
-                              {resendLoading ? 'Mengirim...' : resendCooldown > 0 ? `Tunggu ${resendCooldown}s...` : 'Kirim Ulang Email Konfirmasi'}
-                            </button>
-                            {resendMsg && (
-                              <p className={`text-xs mt-1 ${resendMsg.includes('Gagal') ? 'text-red-400' : 'text-green-400'}`}>{resendMsg}</p>
-                            )}
-                          </div>
-                        )}
-                      </div>
                     )}
+                    {resendMsg && <p className="mt-1 text-xs text-green-400">{resendMsg}</p>}
+                  </div>
+                )}
 
+                <button
+                  type="submit"
+                  disabled={siLoading || siCooldown > 0}
+                  className="w-full py-3 rounded-xl text-white font-semibold text-sm transition-all duration-200 disabled:opacity-50"
+                  style={{ background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)' }}
+                >
+                  {siLoading ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Signing in...
+                    </span>
+                  ) : siCooldown > 0 ? `Wait ${siCooldown}s` : 'Sign In'}
+                </button>
+              </form>
+            ) : (
+              /* ── SIGN UP ── */
+              <form onSubmit={handleSignUp} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Email</label>
+                  <input
+                    type="email"
+                    value={suEmail}
+                    onChange={(e) => setSuEmail(e.target.value)}
+                    placeholder="email@example.com"
+                    autoComplete="email"
+                    className="w-full px-4 py-3 rounded-xl text-white placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Phone Number (optional)</label>
+                  <input
+                    type="tel"
+                    value={suPhone}
+                    onChange={(e) => setSuPhone(e.target.value)}
+                    placeholder="+62812345678"
+                    className="w-full px-4 py-3 rounded-xl text-white placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Password</label>
+                  <div className="relative">
+                    <input
+                      type={suShowPass ? 'text' : 'password'}
+                      value={suPassword}
+                      onChange={(e) => setSuPassword(e.target.value)}
+                      placeholder="••••••••"
+                      autoComplete="new-password"
+                      className="w-full px-4 py-3 pr-12 rounded-xl text-white placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
+                    />
                     <button
-                      type="submit"
-                      disabled={siLoading || siCooldown > 0}
-                      className="w-full py-3 rounded-xl font-bold text-white transition-all disabled:opacity-60"
-                      style={{ background: 'linear-gradient(135deg, #2563eb, #7c3aed)' }}
+                      type="button"
+                      onClick={() => setSuShowPass(!suShowPass)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
                     >
-                      {siLoading ? (
-                        <span className="flex items-center justify-center gap-2">
-                          <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          Signing in...
-                        </span>
-                      ) : siCooldown > 0 ? `Tunggu ${siCooldown}s...` : 'Sign In'}
-                    </button>
-                  </form>
-
-                  <p className="text-center text-sm text-slate-400 mt-4">
-                    Don&apos;t have an account?{' '}
-                    <button onClick={() => switchMode('signup')} className="text-blue-400 hover:text-blue-300 font-medium transition-colors">
-                      Create account now
-                    </button>
-                  </p>
-                </>
-              ) : (
-                <>
-                  <h2 className="text-xl font-bold text-white mb-1">Create New Account</h2>
-                  <p className="text-slate-400 text-sm mb-6">Register and start trading with $10,000 demo</p>
-
-                  <form onSubmit={handleSignUp} className="space-y-4">
-                    {/* Email */}
-                    <div>
-                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-2 block">Email</label>
-                      <input
-                        type="email"
-                        value={suEmail}
-                        onChange={(e) => setSuEmail(e.target.value)}
-                        placeholder="your@email.com"
-                        autoComplete="email"
-                        className="w-full px-4 py-3 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
-                      />
-                    </div>
-
-                    {/* Password */}
-                    <div>
-                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-2 block">Password</label>
-                      <div className="relative">
-                        <input
-                          type={suShowPass ? 'text' : 'password'}
-                          value={suPassword}
-                          onChange={(e) => setSuPassword(e.target.value)}
-                          placeholder="Min. 8 characters"
-                          autoComplete="new-password"
-                          className="w-full px-4 py-3 pr-12 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setSuShowPass(!suShowPass)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
-                        >
-                          {suShowPass ? (
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 4.411m0 0L21 21" />
-                            </svg>
-                          ) : (
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                            </svg>
-                          )}
-                        </button>
-                      </div>
-                      {/* Password strength */}
-                      {suPassword && (
-                        <div className="mt-2">
-                          <div className="flex gap-1 mb-1">
-                            {[1, 2, 3].map((i) => (
-                              <div
-                                key={i}
-                                className="h-1 flex-1 rounded-full transition-all"
-                                style={{
-                                  background: i <= passwordStrength.score
-                                    ? passwordStrength.strength === 'weak' ? '#ef4444'
-                                      : passwordStrength.strength === 'medium'? '#f59e0b' :'#22c55e' :'rgba(255,255,255,0.1)'
-                                }}
-                              />
-                            ))}
-                          </div>
-                          <p className="text-xs" style={{
-                            color: passwordStrength.strength === 'weak' ? '#ef4444'
-                              : passwordStrength.strength === 'medium'? '#f59e0b' :'#22c55e'
-                          }}>
-                            {passwordStrength.label} password
-                          </p>
-                        </div>
+                      {suShowPass ? (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 4.411m0 0L21 21" />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
                       )}
-                    </div>
-
-                    {/* Confirm Password */}
-                    <div>
-                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-2 block">Confirm Password</label>
-                      <div className="relative">
-                        <input
-                          type={suShowConfirm ? 'text' : 'password'}
-                          value={suConfirmPass}
-                          onChange={(e) => setSuConfirmPass(e.target.value)}
-                          placeholder="Repeat your password"
-                          autoComplete="new-password"
-                          className="w-full px-4 py-3 pr-12 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
+                    </button>
+                  </div>
+                  {suPassword && (
+                    <div className="mt-1 flex items-center gap-2">
+                      <div className="flex-1 h-1 rounded-full overflow-hidden" style={{ background: 'rgba(255,255,255,0.1)' }}>
+                        <div
+                          className="h-full rounded-full transition-all duration-300"
+                          style={{
+                            width: `${(passwordStrength.score / 5) * 100}%`,
+                            background: passwordStrength.strength === 'weak' ? '#ef4444' : passwordStrength.strength === 'medium' ? '#f59e0b' : '#22c55e',
+                          }}
                         />
-                        <button
-                          type="button"
-                          onClick={() => setSuShowConfirm(!suShowConfirm)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white transition-colors"
-                        >
-                          {suShowConfirm ? (
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 4.411m0 0L21 21" />
-                            </svg>
-                          ) : (
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                            </svg>
-                          )}
-                        </button>
                       </div>
-                      {suConfirmPass && suPassword !== suConfirmPass && (
-                        <p className="text-red-400 text-xs mt-1">Passwords do not match</p>
-                      )}
-                    </div>
-
-                    {/* Terms */}
-                    <label className="flex items-start gap-3 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={suTerms}
-                        onChange={(e) => setSuTerms(e.target.checked)}
-                        className="w-4 h-4 mt-0.5 rounded border-slate-600 bg-slate-800 text-blue-500 focus:ring-blue-500"
-                      />
-                      <span className="text-sm text-slate-400">
-                        I agree to the{' '}
-                        <span className="text-blue-400">Terms & Conditions</span>
-                        {' '}and{' '}
-                        <span className="text-blue-400">Privacy Policy</span>
+                      <span className="text-xs" style={{ color: passwordStrength.strength === 'weak' ? '#ef4444' : passwordStrength.strength === 'medium' ? '#f59e0b' : '#22c55e' }}>
+                        {passwordStrength.label}
                       </span>
-                    </label>
-
-                    {suError && (
-                      <div className="rounded-xl p-3" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)' }}>
-                        <p className="text-red-400 text-sm">{suError}</p>
-                      </div>
-                    )}
-                    {suSuccess && (
-                      <div className="rounded-xl p-3" style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)' }}>
-                        <p className="text-green-400 text-sm">{suSuccess}</p>
-                      </div>
-                    )}
-
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-1">Confirm Password</label>
+                  <div className="relative">
+                    <input
+                      type={suShowConfirm ? 'text' : 'password'}
+                      value={suConfirmPass}
+                      onChange={(e) => setSuConfirmPass(e.target.value)}
+                      placeholder="••••••••"
+                      autoComplete="new-password"
+                      className="w-full px-4 py-3 pr-12 rounded-xl text-white placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
+                    />
                     <button
-                      type="submit"
-                      disabled={suLoading}
-                      className="w-full py-3 rounded-xl font-bold text-white transition-all disabled:opacity-60"
-                      style={{ background: 'linear-gradient(135deg, #2563eb, #7c3aed)' }}
+                      type="button"
+                      onClick={() => setSuShowConfirm(!suShowConfirm)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300"
                     >
-                      {suLoading ? (
-                        <span className="flex items-center justify-center gap-2">
-                          <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                          Creating account...
-                        </span>
-                      ) : 'Create Account'}
+                      {suShowConfirm ? (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 4.411m0 0L21 21" />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      )}
                     </button>
-                  </form>
+                  </div>
+                </div>
 
-                  <p className="text-center text-sm text-slate-400 mt-4">
-                    Already have an account?{' '}
-                    <button onClick={() => switchMode('signin')} className="text-blue-400 hover:text-blue-300 font-medium transition-colors">
-                      Sign in now
-                    </button>
-                  </p>
-                </>
-              )}
-            </div>
+                <label className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={suTerms}
+                    onChange={(e) => setSuTerms(e.target.checked)}
+                    className="w-4 h-4 mt-0.5 rounded border-gray-600 text-blue-500 focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-gray-400">
+                    I agree to the{' '}
+                    <a href="#" className="text-blue-400 hover:text-blue-300">Terms & Conditions</a>{' '}and{' '}
+                    <a href="#" className="text-blue-400 hover:text-blue-300">Privacy Policy</a>
+                  </span>
+                </label>
+
+                {suError && (
+                  <div className="rounded-xl p-3" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)' }}>
+                    <p className="text-red-400 text-sm">{suError}</p>
+                  </div>
+                )}
+                {suSuccess && (
+                  <div className="rounded-xl p-3" style={{ background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)' }}>
+                    <p className="text-green-400 text-sm">{suSuccess}</p>
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={suLoading}
+                  className="w-full py-3 rounded-xl text-white font-semibold text-sm transition-all duration-200 disabled:opacity-50"
+                  style={{ background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)' }}
+                >
+                  {suLoading ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Registering...
+                    </span>
+                  ) : 'Register Now'}
+                </button>
+              </form>
+            )}
           </div>
-        )}
+        </div>
 
-        {/* Footer */}
-        <p className="text-center text-xs text-slate-600 mt-6">
-          © 2024 InvesoFT. All rights reserved. Trading involves risk.
+        <p className="text-center text-gray-500 text-xs mt-6">
+          &copy; 2024 Investoft. All rights reserved.
         </p>
       </div>
     </div>
+  );
+}
+
+export default function AuthPage() {
+  return (
+    <AuthErrorBoundary>
+      <AuthPageInner />
+    </AuthErrorBoundary>
   );
 }

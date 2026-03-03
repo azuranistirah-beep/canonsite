@@ -37,3 +37,52 @@
     overflow: hidden;
   }
 }
+
+/* Hide Built with Rocket.new badge */
+rocket-widget,
+[data-rocket-widget],
+.rocket-badge,
+#rocket-badge,
+a[href*="rocket.new"][style*="position: fixed"],
+a[href*="builtwithrocket"],
+div[style*="position: fixed"][style*="bottom"][style*="right"] a[href*="rocket"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Trade panel range slider styles */
+input[type='range'].trade-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 4px;
+  outline: none;
+  cursor: pointer;
+}
+input[type='range'].trade-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #7c3aed;
+  cursor: pointer;
+  box-shadow: 0 0 0 3px rgba(124,58,237,0.25);
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+input[type='range'].trade-slider::-webkit-slider-thumb:hover {
+  box-shadow: 0 0 0 5px rgba(124,58,237,0.35);
+  transform: scale(1.15);
+}
+input[type='range'].trade-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #7c3aed;
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 0 0 3px rgba(124,58,237,0.25);
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}

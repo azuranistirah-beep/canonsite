@@ -2,6 +2,7 @@ import React from 'react';
 import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import '../styles/index.css';
+import '../styles/tailwind.css';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { LanguageProvider } from '@/contexts/LanguageContext';
 
@@ -37,7 +38,7 @@ export default function RootLayout({
       <head>
         <script id="tv-widget-script" src="https://s3.tradingview.com/tv.js" async />
 </head>
-      <body className={inter.className}>
+      <body className={`${inter.className} hide-rocket-badge`}>
         <AuthProvider>
           <LanguageProvider>{children}</LanguageProvider>
         </AuthProvider>

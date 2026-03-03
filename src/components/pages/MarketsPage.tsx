@@ -5,6 +5,8 @@ import Navbar from '@/components/Navbar';
 import TickerTape from '@/components/TickerTape';
 import { useSearchParams } from 'next/navigation';
 
+
+
 interface Trade {
   id: number;
   symbol: string;
@@ -43,37 +45,98 @@ interface AssetPrice {
 }
 
 const POPULAR_ASSETS: AssetPrice[] = [
+  // Top crypto
   { symbol: 'BTC', name: 'Bitcoin', tvSymbol: 'BINANCE:BTCUSDT', price: 0, change: 0, category: 'crypto', icon: '₿' },
   { symbol: 'ETH', name: 'Ethereum', tvSymbol: 'BINANCE:ETHUSDT', price: 0, change: 0, category: 'crypto', icon: 'Ξ' },
   { symbol: 'SOL', name: 'Solana', tvSymbol: 'BINANCE:SOLUSDT', price: 0, change: 0, category: 'crypto', icon: '◎' },
   { symbol: 'BNB', name: 'BNB', tvSymbol: 'BINANCE:BNBUSDT', price: 0, change: 0, category: 'crypto', icon: 'B' },
   { symbol: 'XRP', name: 'Ripple', tvSymbol: 'BINANCE:XRPUSDT', price: 0, change: 0, category: 'crypto', icon: 'X' },
+  { symbol: 'ADA', name: 'Cardano', tvSymbol: 'BINANCE:ADAUSDT', price: 0, change: 0, category: 'crypto', icon: 'A' },
+  { symbol: 'DOGE', name: 'Dogecoin', tvSymbol: 'BINANCE:DOGEUSDT', price: 0, change: 0, category: 'crypto', icon: 'D' },
+  { symbol: 'AVAX', name: 'Avalanche', tvSymbol: 'BINANCE:AVAXUSDT', price: 0, change: 0, category: 'crypto', icon: 'A' },
+  { symbol: 'DOT', name: 'Polkadot', tvSymbol: 'BINANCE:DOTUSDT', price: 0, change: 0, category: 'crypto', icon: '•' },
+  { symbol: 'LINK', name: 'Chainlink', tvSymbol: 'BINANCE:LINKUSDT', price: 0, change: 0, category: 'crypto', icon: 'L' },
+  // Top stocks
   { symbol: 'AAPL', name: 'Apple', tvSymbol: 'NASDAQ:AAPL', price: 0, change: 0, category: 'stocks', icon: '' },
   { symbol: 'TSLA', name: 'Tesla', tvSymbol: 'NASDAQ:TSLA', price: 0, change: 0, category: 'stocks', icon: 'T' },
   { symbol: 'NVDA', name: 'NVIDIA', tvSymbol: 'NASDAQ:NVDA', price: 0, change: 0, category: 'stocks', icon: 'N' },
   { symbol: 'MSFT', name: 'Microsoft', tvSymbol: 'NASDAQ:MSFT', price: 0, change: 0, category: 'stocks', icon: 'M' },
+  { symbol: 'GOOGL', name: 'Alphabet', tvSymbol: 'NASDAQ:GOOGL', price: 0, change: 0, category: 'stocks', icon: 'G' },
+  { symbol: 'AMZN', name: 'Amazon', tvSymbol: 'NASDAQ:AMZN', price: 0, change: 0, category: 'stocks', icon: 'A' },
+  { symbol: 'META', name: 'Meta', tvSymbol: 'NASDAQ:META', price: 0, change: 0, category: 'stocks', icon: 'M' },
+  { symbol: 'AMD', name: 'AMD', tvSymbol: 'NASDAQ:AMD', price: 0, change: 0, category: 'stocks', icon: '' },
+  { symbol: 'NFLX', name: 'Netflix', tvSymbol: 'NASDAQ:NFLX', price: 0, change: 0, category: 'stocks', icon: '' },
+  { symbol: 'COIN', name: 'Coinbase', tvSymbol: 'NASDAQ:COIN', price: 0, change: 0, category: 'stocks', icon: '' },
+  // Forex
   { symbol: 'EUR/USD', name: 'EUR/USD', tvSymbol: 'FX:EURUSD', price: 0, change: 0, category: 'forex', icon: '€' },
   { symbol: 'GBP/USD', name: 'GBP/USD', tvSymbol: 'FX:GBPUSD', price: 0, change: 0, category: 'forex', icon: '£' },
   { symbol: 'USD/JPY', name: 'USD/JPY', tvSymbol: 'FX:USDJPY', price: 0, change: 0, category: 'forex', icon: '¥' },
+  { symbol: 'AUD/USD', name: 'AUD/USD', tvSymbol: 'FX:AUDUSD', price: 0, change: 0, category: 'forex', icon: 'A' },
+  { symbol: 'USD/CAD', name: 'USD/CAD', tvSymbol: 'FX:USDCAD', price: 0, change: 0, category: 'forex', icon: 'C' },
+  { symbol: 'USD/CHF', name: 'USD/CHF', tvSymbol: 'FX:USDCHF', price: 0, change: 0, category: 'forex', icon: 'CHF' },
+  { symbol: 'NZD/USD', name: 'NZD/USD', tvSymbol: 'FX:NZDUSD', price: 0, change: 0, category: 'forex', icon: 'NZD' },
+  { symbol: 'EUR/GBP', name: 'EUR/GBP', tvSymbol: 'FX:EURGBP', price: 0, change: 0, category: 'forex', icon: 'EURGBP' },
+  { symbol: 'EUR/JPY', name: 'EUR/JPY', tvSymbol: 'FX:EURJPY', price: 0, change: 0, category: 'forex', icon: 'EURJPY' },
+  { symbol: 'GBP/JPY', name: 'GBP/JPY', tvSymbol: 'FX:GBPJPY', price: 0, change: 0, category: 'forex', icon: 'GBPJPY' },
+  // Commodities
   { symbol: 'GOLD', name: 'Gold', tvSymbol: 'TVC:GOLD', price: 0, change: 0, category: 'commodities', icon: '🥇' },
-  { symbol: 'OIL', name: 'Crude Oil', tvSymbol: 'TVC:USOIL', price: 0, change: 0, category: 'commodities', icon: '🛢' },
   { symbol: 'SILVER', name: 'Silver', tvSymbol: 'TVC:SILVER', price: 0, change: 0, category: 'commodities', icon: '🥈' },
+  { symbol: 'OIL', name: 'Crude Oil WTI', tvSymbol: 'TVC:USOIL', price: 0, change: 0, category: 'commodities', icon: '🛢' },
+  { symbol: 'BRENT', name: 'Brent Crude', tvSymbol: 'TVC:UKOIL', price: 0, change: 0, category: 'commodities', icon: '🛢' },
+  { symbol: 'NATGAS', name: 'Natural Gas', tvSymbol: 'TVC:NATGAS', price: 0, change: 0, category: 'commodities', icon: '💨' },
 ];
 
 const TRADING_SYMBOLS = [
+  // Crypto
   { label: 'Bitcoin', symbol: 'BTC', tvSymbol: 'BINANCE:BTCUSDT', binanceSymbol: 'btcusdt', coinId: 'bitcoin', category: 'crypto' },
   { label: 'Ethereum', symbol: 'ETH', tvSymbol: 'BINANCE:ETHUSDT', binanceSymbol: 'ethusdt', coinId: 'ethereum', category: 'crypto' },
   { label: 'Solana', symbol: 'SOL', tvSymbol: 'BINANCE:SOLUSDT', binanceSymbol: 'solusdt', coinId: 'solana', category: 'crypto' },
   { label: 'BNB', symbol: 'BNB', tvSymbol: 'BINANCE:BNBUSDT', binanceSymbol: 'bnbusdt', coinId: 'binancecoin', category: 'crypto' },
   { label: 'XRP', symbol: 'XRP', tvSymbol: 'BINANCE:XRPUSDT', binanceSymbol: 'xrpusdt', coinId: 'ripple', category: 'crypto' },
+  { label: 'Cardano', symbol: 'ADA', tvSymbol: 'BINANCE:ADAUSDT', binanceSymbol: 'adausdt', coinId: 'cardano', category: 'crypto' },
+  { label: 'Dogecoin', symbol: 'DOGE', tvSymbol: 'BINANCE:DOGEUSDT', binanceSymbol: 'dogeusdt', coinId: 'dogecoin', category: 'crypto' },
+  { label: 'Avalanche', symbol: 'AVAX', tvSymbol: 'BINANCE:AVAXUSDT', binanceSymbol: 'avaxusdt', coinId: 'avalanche-2', category: 'crypto' },
+  { label: 'Polkadot', symbol: 'DOT', tvSymbol: 'BINANCE:DOTUSDT', binanceSymbol: 'dotusdt', coinId: 'polkadot', category: 'crypto' },
+  { label: 'Chainlink', symbol: 'LINK', tvSymbol: 'BINANCE:LINKUSDT', binanceSymbol: 'linkusdt', coinId: 'chainlink', category: 'crypto' },
+  { label: 'Polygon', symbol: 'MATIC', tvSymbol: 'BINANCE:MATICUSDT', binanceSymbol: 'maticusdt', coinId: 'matic-network', category: 'crypto' },
+  { label: 'Uniswap', symbol: 'UNI', tvSymbol: 'BINANCE:UNIUSDT', binanceSymbol: 'uniusdt', coinId: 'uniswap', category: 'crypto' },
+  { label: 'Cosmos', symbol: 'ATOM', tvSymbol: 'BINANCE:ATOMUSDT', binanceSymbol: 'atomusdt', coinId: 'cosmos', category: 'crypto' },
+  { label: 'Litecoin', symbol: 'LTC', tvSymbol: 'BINANCE:LTCUSDT', binanceSymbol: 'ltcusdt', coinId: 'litecoin', category: 'crypto' },
+  { label: 'NEAR Protocol', symbol: 'NEAR', tvSymbol: 'BINANCE:NEARUSDT', binanceSymbol: 'nearusdt', coinId: 'near', category: 'crypto' },
+  { label: 'Aptos', symbol: 'APT', tvSymbol: 'BINANCE:APTUSDT', binanceSymbol: 'aptusdt', coinId: 'aptos', category: 'crypto' },
+  { label: 'Arbitrum', symbol: 'ARB', tvSymbol: 'BINANCE:ARBUSDT', binanceSymbol: 'arbusdt', coinId: 'arbitrum', category: 'crypto' },
+  { label: 'Optimism', symbol: 'OP', tvSymbol: 'BINANCE:OPUSDT', binanceSymbol: 'opusdt', coinId: 'optimism', category: 'crypto' },
+  { label: 'Sui', symbol: 'SUI', tvSymbol: 'BINANCE:SUIUSDT', binanceSymbol: 'suiusdt', coinId: 'sui', category: 'crypto' },
+  { label: 'Injective', symbol: 'INJ', tvSymbol: 'BINANCE:INJUSDT', binanceSymbol: 'injusdt', coinId: 'injective-protocol', category: 'crypto' },
+  { label: 'Toncoin', symbol: 'TON', tvSymbol: 'BINANCE:TONUSDT', binanceSymbol: 'tonusdt', coinId: 'the-open-network', category: 'crypto' },
+  // Stocks
   { label: 'Apple', symbol: 'AAPL', tvSymbol: 'NASDAQ:AAPL', binanceSymbol: '', coinId: '', category: 'stocks' },
   { label: 'Tesla', symbol: 'TSLA', tvSymbol: 'NASDAQ:TSLA', binanceSymbol: '', coinId: '', category: 'stocks' },
   { label: 'NVIDIA', symbol: 'NVDA', tvSymbol: 'NASDAQ:NVDA', binanceSymbol: '', coinId: '', category: 'stocks' },
   { label: 'Microsoft', symbol: 'MSFT', tvSymbol: 'NASDAQ:MSFT', binanceSymbol: '', coinId: '', category: 'stocks' },
+  { label: 'Alphabet', symbol: 'GOOGL', tvSymbol: 'NASDAQ:GOOGL', binanceSymbol: '', coinId: '', category: 'stocks' },
+  { label: 'Amazon', symbol: 'AMZN', tvSymbol: 'NASDAQ:AMZN', binanceSymbol: '', coinId: '', category: 'stocks' },
+  { label: 'Meta', symbol: 'META', tvSymbol: 'NASDAQ:META', binanceSymbol: '', coinId: '', category: 'stocks' },
+  { label: 'AMD', symbol: 'AMD', tvSymbol: 'NASDAQ:AMD', binanceSymbol: '', coinId: '', category: 'stocks' },
+  { label: 'Netflix', symbol: 'NFLX', tvSymbol: 'NASDAQ:NFLX', binanceSymbol: '', coinId: '', category: 'stocks' },
+  { label: 'Coinbase', symbol: 'COIN', tvSymbol: 'NASDAQ:COIN', binanceSymbol: '', coinId: '', category: 'stocks' },
+  // Forex
   { label: 'EUR/USD', symbol: 'EURUSD', tvSymbol: 'FX:EURUSD', binanceSymbol: '', coinId: '', category: 'forex' },
   { label: 'GBP/USD', symbol: 'GBPUSD', tvSymbol: 'FX:GBPUSD', binanceSymbol: '', coinId: '', category: 'forex' },
+  { label: 'USD/JPY', symbol: 'USDJPY', tvSymbol: 'FX:USDJPY', binanceSymbol: '', coinId: '', category: 'forex' },
+  { label: 'AUD/USD', symbol: 'AUDUSD', tvSymbol: 'FX:AUDUSD', binanceSymbol: '', coinId: '', category: 'forex' },
+  { label: 'USD/CAD', symbol: 'USDCAD', tvSymbol: 'FX:USDCAD', binanceSymbol: '', coinId: '', category: 'forex' },
+  { label: 'USD/CHF', symbol: 'USDCHF', tvSymbol: 'FX:USDCHF', binanceSymbol: '', coinId: '', category: 'forex' },
+  { label: 'NZD/USD', symbol: 'NZDUSD', tvSymbol: 'FX:NZDUSD', binanceSymbol: '', coinId: '', category: 'forex' },
+  { label: 'EUR/GBP', symbol: 'EURGBP', tvSymbol: 'FX:EURGBP', binanceSymbol: '', coinId: '', category: 'forex' },
+  { label: 'EUR/JPY', symbol: 'EURJPY', tvSymbol: 'FX:EURJPY', binanceSymbol: '', coinId: '', category: 'forex' },
+  { label: 'GBP/JPY', symbol: 'GBPJPY', tvSymbol: 'FX:GBPJPY', binanceSymbol: '', coinId: '', category: 'forex' },
+  // Commodities
   { label: 'Gold', symbol: 'GOLD', tvSymbol: 'TVC:GOLD', binanceSymbol: '', coinId: '', category: 'commodities' },
-  { label: 'Crude Oil', symbol: 'OIL', tvSymbol: 'TVC:USOIL', binanceSymbol: '', coinId: '', category: 'commodities' },
+  { label: 'Silver', symbol: 'SILVER', tvSymbol: 'TVC:SILVER', binanceSymbol: '', coinId: '', category: 'commodities' },
+  { label: 'Crude Oil WTI', symbol: 'OIL', tvSymbol: 'TVC:USOIL', binanceSymbol: '', coinId: '', category: 'commodities' },
+  { label: 'Brent Crude', symbol: 'BRENT', tvSymbol: 'TVC:UKOIL', binanceSymbol: '', coinId: '', category: 'commodities' },
+  { label: 'Natural Gas', symbol: 'NATGAS', tvSymbol: 'TVC:NATGAS', binanceSymbol: '', coinId: '', category: 'commodities' },
 ];
 
 const DURATIONS = [
@@ -124,8 +187,8 @@ const CATEGORY_ICON_COLOR: Record<string, string> = {
   commodities: '#f97316',
 };
 
-const cardStyle = { background: '#0d0e23', border: '1px solid rgba(255,255,255,0.08)' };
-const labelStyle = { color: 'rgba(255,255,255,0.5)' };
+const cardStyle = { background: '#0d0e23', border: '1px solid #1e293b' };
+const labelStyle = { color: '#64748b' };
 
 // TradingView Mini Symbol Overview Widget
 function TradingViewMiniSymbol({ symbol }: { symbol: string }) {
@@ -852,12 +915,12 @@ export default function MarketsPage() {
         {/* Chart Section */}
         <div className="rounded-2xl overflow-hidden mb-4" style={cardStyle}>
           {/* Symbol Selector */}
-          <div className="p-3 sm:p-4" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)', background: 'rgba(0,0,0,0.2)' }}>
-            <div className="text-xs mb-1" style={labelStyle}>Trading Symbol</div>
+          <div className="p-3 sm:p-4" style={{ borderBottom: '1px solid #1e293b', background: 'rgba(0,0,0,0.2)' }}>
+            <div className="text-xs mb-1 font-medium" style={{ color: '#64748b' }}>Trading Symbol</div>
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-base sm:text-lg font-bold text-white">{selectedSymbol.label}</div>
-                <div className="text-xs" style={{ color: 'rgba(255,255,255,0.4)' }}>{selectedSymbol.tvSymbol}</div>
+                <div className="text-base sm:text-lg font-semibold" style={{ color: '#f1f5f9' }}>{selectedSymbol.label}</div>
+                <div className="text-xs font-medium" style={{ color: '#64748b' }}>{selectedSymbol.tvSymbol}</div>
               </div>
               <div className="relative" ref={symbolSearchRef}>
                 <button
@@ -890,11 +953,11 @@ export default function MarketsPage() {
                             setShowSymbolSearch(false);
                             setSymbolSearch('');
                           }}
-                          className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-white/10 transition-colors text-left"
+                          className="w-full flex items-center justify-between px-3 py-2.5 hover:bg-slate-800/50 transition-colors text-left"
                           style={{ background: selectedSymbol.symbol === s.symbol ? 'rgba(99,102,241,0.15)' : 'transparent' }}
                         >
-                          <span className="text-sm text-white font-medium">{s.label}</span>
-                          <span className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>{s.symbol}</span>
+                          <span className="text-sm font-semibold" style={{ color: '#f1f5f9' }}>{s.label}</span>
+                          <span className="text-xs font-medium" style={{ color: '#64748b' }}>{s.symbol}</span>
                         </button>
                       ))}
                     </div>
@@ -927,7 +990,7 @@ export default function MarketsPage() {
           </div>
 
           {/* Live Real-Time Pricing Bar */}
-          <div className="flex items-center justify-between px-4 py-3" style={{ borderTop: '1px solid rgba(255,255,255,0.08)', background: 'rgba(0,0,0,0.2)' }}>
+          <div className="flex items-center justify-between px-4 py-3" style={{ borderTop: '1px solid #1e293b', background: 'rgba(0,0,0,0.2)' }}>
             <div className="flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
               <span className="text-xs sm:text-sm font-semibold text-green-400">
@@ -935,7 +998,7 @@ export default function MarketsPage() {
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-xs sm:text-sm" style={labelStyle}>Current Price:</span>
+              <span className="text-xs sm:text-sm font-medium" style={{ color: '#64748b' }}>Current Price:</span>
               {(priceLoading && currentPrice === 0) ? (
                 <span className="text-base sm:text-lg font-bold text-white animate-pulse">Loading...</span>
               ) : (
@@ -970,26 +1033,26 @@ export default function MarketsPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 mb-4">
           {/* Investment Amount */}
           <div className="rounded-2xl p-4 sm:p-5" style={cardStyle}>
-            <h3 className="font-bold text-white text-sm sm:text-base mb-4">Investment Amount</h3>
+            <h3 className="font-semibold text-sm sm:text-base mb-4" style={{ color: '#f1f5f9' }}>Investment Amount</h3>
             <div className="flex items-center gap-2 mb-3">
               <button
                 onClick={() => handleAmountChange(investAmount - 1)}
                 className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-lg font-bold text-white text-lg transition-colors flex-shrink-0"
-                style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}
+                style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid #1e293b' }}
               >−</button>
               <div
-                className="flex-1 text-center text-lg sm:text-xl font-bold text-white rounded-lg py-2.5"
-                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}
+                className="flex-1 text-center text-lg sm:text-xl font-semibold rounded-lg py-2.5"
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid #1e293b', color: '#f1f5f9' }}
               >
                 ${investAmount.toLocaleString()}
               </div>
               <button
                 onClick={() => handleAmountChange(investAmount + 1)}
                 className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-lg font-bold text-white text-lg transition-colors flex-shrink-0"
-                style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}
+                style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid #1e293b' }}
               >+</button>
             </div>
-            <div className="text-center text-xs" style={labelStyle}>Range: $1 - $10,000</div>
+            <div className="text-center text-xs font-medium" style={{ color: '#64748b' }}>Range: $1 - $10,000</div>
             <input
               type="range"
               min={1}
@@ -1002,26 +1065,26 @@ export default function MarketsPage() {
 
           {/* Trade Duration */}
           <div className="rounded-2xl p-4 sm:p-5" style={cardStyle}>
-            <h3 className="font-bold text-white text-sm sm:text-base mb-4">Trade Duration</h3>
+            <h3 className="font-semibold text-sm sm:text-base mb-4" style={{ color: '#f1f5f9' }}>Trade Duration</h3>
             <div className="flex items-center gap-2 mb-3">
               <button
                 onClick={() => handleDurationChange(durationIdx - 1)}
                 className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-lg font-bold text-white text-lg transition-colors flex-shrink-0"
-                style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}
+                style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid #1e293b' }}
               >−</button>
               <div
-                className="flex-1 text-center text-lg sm:text-xl font-bold text-white rounded-lg py-2.5"
-                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)' }}
+                className="flex-1 text-center text-lg sm:text-xl font-semibold rounded-lg py-2.5"
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid #1e293b', color: '#f1f5f9' }}
               >
                 {selectedDuration}
               </div>
               <button
                 onClick={() => handleDurationChange(durationIdx + 1)}
                 className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-lg font-bold text-white text-lg transition-colors flex-shrink-0"
-                style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.15)' }}
+                style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid #1e293b' }}
               >+</button>
             </div>
-            <div className="text-center text-xs mb-1" style={labelStyle}>Range: 5 Sec – 1 Day</div>
+            <div className="text-center text-xs mb-1 font-medium" style={{ color: '#64748b' }}>Range: 5 Sec – 1 Day</div>
             <input
               type="range"
               min={0}
@@ -1035,11 +1098,11 @@ export default function MarketsPage() {
                 <button
                   key={dur.label}
                   onClick={() => handleDurationChange(i)}
-                  className="min-h-[36px] text-xs font-bold rounded-xl transition-all"
+                  className="min-h-[36px] text-xs font-semibold rounded-xl transition-all"
                   style={
                     selectedDuration === dur.label
                       ? { background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', color: '#fff', boxShadow: '0 4px 12px rgba(99,102,241,0.3)' }
-                      : { background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.1)' }
+                      : { background: 'rgba(255,255,255,0.06)', color: '#64748b', border: '1px solid #1e293b' }
                   }
                 >
                   {dur.label}
@@ -1050,19 +1113,19 @@ export default function MarketsPage() {
 
           {/* Execute Trade */}
           <div className="rounded-2xl p-4 sm:p-5" style={cardStyle}>
-            <h3 className="font-bold text-white text-sm sm:text-base mb-4">Execute Trade</h3>
+            <h3 className="font-semibold text-sm sm:text-base mb-4" style={{ color: '#f1f5f9' }}>Execute Trade</h3>
             <div className="space-y-2 mb-4">
               <div className="flex items-center justify-between">
-                <span className="text-sm" style={labelStyle}>Market Status</span>
+                <span className="text-sm font-medium" style={{ color: '#64748b' }}>Market Status</span>
                 <span className="px-2 py-0.5 rounded text-xs font-bold bg-green-500/20 text-green-400">Open</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm" style={labelStyle}>Potential Profit</span>
-                <span className="text-sm font-bold text-green-400">+${potentialProfit.toFixed(2)}</span>
+                <span className="text-sm font-medium" style={{ color: '#64748b' }}>Potential Profit</span>
+                <span className="text-sm font-semibold text-green-400">+${potentialProfit.toFixed(2)}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-sm" style={labelStyle}>Payout</span>
-                <span className="text-sm font-bold text-white">95%</span>
+                <span className="text-sm font-medium" style={{ color: '#64748b' }}>Payout</span>
+                <span className="text-sm font-semibold" style={{ color: '#f1f5f9' }}>95%</span>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-2">
@@ -1095,13 +1158,13 @@ export default function MarketsPage() {
 
         {/* Open Positions / History Tabs */}
         <div className="rounded-2xl overflow-hidden mb-6" style={cardStyle}>
-          <div className="flex" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+          <div className="flex" style={{ borderBottom: '1px solid #1e293b' }}>
             <button
               onClick={() => setActiveTab('open')}
               className="flex-1 sm:flex-none px-6 min-h-[48px] text-sm font-medium transition-colors"
               style={activeTab === 'open'
                 ? { color: '#818cf8', borderBottom: '2px solid #6366f1' }
-                : { color: 'rgba(255,255,255,0.4)' }
+                : { color: '#64748b' }
               }
             >
               Open Positions ({trades.length})
@@ -1111,7 +1174,7 @@ export default function MarketsPage() {
               className="flex-1 sm:flex-none px-6 min-h-[48px] text-sm font-medium transition-colors"
               style={activeTab === 'history'
                 ? { color: '#818cf8', borderBottom: '2px solid #6366f1' }
-                : { color: 'rgba(255,255,255,0.4)' }
+                : { color: '#64748b' }
               }
             >
               History ({historyTrades.length})
@@ -1120,23 +1183,23 @@ export default function MarketsPage() {
           <div className="p-4">
             {activeTab === 'open' ? (
               trades.length === 0 ? (
-                <div className="text-center py-8 text-sm" style={labelStyle}>No open positions. Place a trade to get started.</div>
+                <div className="text-center py-8 text-sm font-medium" style={{ color: '#64748b' }}>No open positions. Place a trade to get started.</div>
               ) : (
                 <div className="space-y-2">
                   {trades.map(trade => (
-                    <div key={trade.id} className="flex items-center justify-between p-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                    <div key={trade.id} className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-800/50 transition-colors" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid #1e293b' }}>
                       <div className="flex items-center gap-3">
                         <span className={`px-2 py-1 rounded text-xs font-bold ${
                           trade.direction === 'UP' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
                         }`}>{trade.direction}</span>
                         <div>
-                          <div className="font-bold text-white text-sm">{trade.symbolName}</div>
-                          <div className="text-xs" style={labelStyle}>{trade.openTime} · {trade.duration}</div>
+                          <div className="font-semibold text-sm" style={{ color: '#f1f5f9' }}>{trade.symbolName}</div>
+                          <div className="text-xs font-medium" style={{ color: '#64748b' }}>{trade.openTime} · {trade.duration}</div>
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="font-bold text-white text-sm">${trade.amount}</div>
-                        <div className="text-xs" style={labelStyle}>@ ${formatPrice(trade.openPrice, trade.symbol)}</div>
+                        <div className="font-semibold text-sm" style={{ color: '#f1f5f9' }}>${trade.amount}</div>
+                        <div className="text-xs font-medium" style={{ color: '#64748b' }}>@ ${formatPrice(trade.openPrice, trade.symbol)}</div>
                       </div>
                     </div>
                   ))}
@@ -1144,25 +1207,25 @@ export default function MarketsPage() {
               )
             ) : (
               historyTrades.length === 0 ? (
-                <div className="text-center py-8 text-sm" style={labelStyle}>No trade history yet.</div>
+                <div className="text-center py-8 text-sm font-medium" style={{ color: '#64748b' }}>No trade history yet.</div>
               ) : (
                 <div className="space-y-2">
                   {historyTrades.map(trade => (
-                    <div key={trade.id} className="flex items-center justify-between p-3 rounded-xl" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                    <div key={trade.id} className="flex items-center justify-between p-3 rounded-xl hover:bg-slate-800/50 transition-colors" style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid #1e293b' }}>
                       <div className="flex items-center gap-3">
                         <span className={`px-2 py-1 rounded text-xs font-bold ${
                           trade.status === 'won' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
                         }`}>{trade.status === 'won' ? 'WON' : 'LOST'}</span>
                         <div>
-                          <div className="font-bold text-white text-sm">{trade.symbolName}</div>
-                          <div className="text-xs" style={labelStyle}>{trade.direction} · {trade.duration}</div>
+                          <div className="font-semibold text-sm" style={{ color: '#f1f5f9' }}>{trade.symbolName}</div>
+                          <div className="text-xs font-medium" style={{ color: '#64748b' }}>{trade.direction} · {trade.duration}</div>
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className={`font-bold text-sm ${
-                          (trade.profit || 0) >= 0 ? 'text-green-400' : 'text-red-400'
+                        <div className={`font-semibold text-sm ${
+                          (trade.profit || 0) >= 0 ? 'text-emerald-500' : 'text-red-500'
                         }`}>{(trade.profit || 0) >= 0 ? '+' : ''}${trade.profit?.toFixed(2)}</div>
-                        <div className="text-xs" style={labelStyle}>${trade.amount} invested</div>
+                        <div className="text-xs font-medium" style={{ color: '#64748b' }}>${trade.amount} invested</div>
                       </div>
                     </div>
                   ))}
@@ -1175,8 +1238,8 @@ export default function MarketsPage() {
         {/* Popular Assets - TradingView Mini Symbol Overview */}
         <div className="mb-6">
           <div className="text-center mb-6">
-            <h2 className="text-xl sm:text-2xl font-bold text-white">Popular Assets</h2>
-            <p className="text-sm mt-1" style={{ color: 'rgba(255,255,255,0.5)' }}>Track and trade the most popular stocks, cryptocurrencies, forex pairs, and commodities</p>
+            <h2 className="text-xl sm:text-2xl font-semibold" style={{ color: '#f1f5f9' }}>Popular Assets</h2>
+            <p className="text-sm mt-1 font-medium" style={{ color: '#64748b' }}>Track and trade the most popular stocks, cryptocurrencies, forex pairs, and commodities</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {[
@@ -1187,11 +1250,29 @@ export default function MarketsPage() {
               { symbol: 'BINANCE:XRPUSDT', displaySymbol: 'XRPUSDT', name: 'XRP / TETHERS' },
               { symbol: 'BINANCE:ADAUSDT', displaySymbol: 'ADAUSDT', name: 'CARDANO / TETHERS' },
               { symbol: 'BINANCE:DOGEUSDT', displaySymbol: 'DOGEUSDT', name: 'DOGECOIN / TETHERS' },
+              { symbol: 'BINANCE:AVAXUSDT', displaySymbol: 'AVAXUSDT', name: 'AVALANCHE / TETHERS' },
               { symbol: 'BINANCE:DOTUSDT', displaySymbol: 'DOTUSDT', name: 'DOT / TETHERS' },
               { symbol: 'NASDAQ:AAPL', displaySymbol: 'AAPL', name: 'APPLE INC' },
               { symbol: 'NASDAQ:MSFT', displaySymbol: 'MSFT', name: 'MICROSOFT CORP.' },
               { symbol: 'NASDAQ:GOOGL', displaySymbol: 'GOOGL', name: 'ALPHABET INC (GOOGLE) CLASS A' },
               { symbol: 'NASDAQ:AMZN', displaySymbol: 'AMZN', name: 'AMAZON.COM, INC.' },
+              { symbol: 'NASDAQ:META', displaySymbol: 'META', name: 'META INC' },
+              { symbol: 'NASDAQ:AMD', displaySymbol: 'AMD', name: 'ADVANCED MICRO DEVICES INC' },
+              { symbol: 'NASDAQ:NFLX', displaySymbol: 'NFLX', name: 'NETFLIX INC' },
+              { symbol: 'NASDAQ:COIN', displaySymbol: 'COIN', name: 'COINBASE GLOBAL INC' },
+              { symbol: 'FX:EURUSD', displaySymbol: 'EURUSD', name: 'EURO / US DOLLAR' },
+              { symbol: 'FX:GBPUSD', displaySymbol: 'GBPUSD', name: 'BRITISH POUND / US DOLLAR' },
+              { symbol: 'FX:USDJPY', displaySymbol: 'USDJPY', name: 'US DOLLAR / JAPANESE YEN' },
+              { symbol: 'FX:AUDUSD', displaySymbol: 'AUDUSD', name: 'AUSTRALIAN DOLLAR / US DOLLAR' },
+              { symbol: 'FX:USDCAD', displaySymbol: 'USDCAD', name: 'US DOLLAR / CANADIAN DOLLAR' },
+              { symbol: 'FX:USDCHF', displaySymbol: 'USDCHF', name: 'US DOLLAR / SWISS FRANC' },
+              { symbol: 'FX:NZDUSD', displaySymbol: 'NZDUSD', name: 'NEW ZEALAND DOLLAR / US DOLLAR' },
+              { symbol: 'FX:EURGBP', displaySymbol: 'EURGBP', name: 'EURO / BRITISH POUND' },
+              { symbol: 'FX:EURJPY', displaySymbol: 'EURJPY', name: 'EURO / JAPANESE YEN' },
+              { symbol: 'FX:GBPJPY', displaySymbol: 'GBPJPY', name: 'BRITISH POUND / JAPANESE YEN' },
+              { symbol: 'TVC:GOLD', displaySymbol: 'GOLD', name: 'GOLD' },
+              { symbol: 'TVC:USOIL', displaySymbol: 'OIL', name: 'CRUDE OIL' },
+              { symbol: 'TVC:SILVER', displaySymbol: 'SILVER', name: 'SILVER' },
             ].map((asset) => (
               <TradingViewMiniSymbol key={asset.symbol} symbol={asset.symbol} />
             ))}
