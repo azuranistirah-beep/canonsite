@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
   try {
     // Check STRIPE_SECRET_KEY is configured
     if (!process.env.STRIPE_SECRET_KEY || process.env.STRIPE_SECRET_KEY === 'your-stripe-secret-key-here') {
-      return NextResponse.json({ error: 'Stripe belum dikonfigurasi. Silakan hubungi administrator.' }, { status: 503 });
+      return NextResponse.json({ error: 'Stripe is not configured. Please contact the administrator.' }, { status: 503 });
     }
 
     let user: { id: string; email?: string } | null = null;
@@ -173,7 +173,7 @@ export async function POST(req: NextRequest) {
     console.error('[Stripe] create-checkout-session error:', err);
     // User-friendly error for unsupported payment methods
     if (message.includes('payment_method_types') || message.includes('Invalid payment method') || message.includes('does not support')) {
-      return NextResponse.json({ error: 'Metode pembayaran tidak didukung untuk mata uang ini. Silakan gunakan kartu kredit/debit.' }, { status: 400 });
+      return NextResponse.json({ error: 'Payment method not supported for this currency. Please use a credit/debit card.' }, { status: 400 });
     }
     return NextResponse.json({ error: message }, { status: 500 });
   }

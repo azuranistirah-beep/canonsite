@@ -17,6 +17,7 @@ import {
   X,
   ChevronRight,
   Shield,
+  Copy,
 } from 'lucide-react';
 import Icon from '@/components/ui/AppIcon';
 
@@ -31,6 +32,7 @@ const navItems = [
   { href: '/admin/deposits', label: 'Deposits', icon: ArrowDownCircle },
   { href: '/admin/withdrawals', label: 'Withdrawals', icon: ArrowUpCircle },
   { href: '/admin/trades', label: 'Trades', icon: Activity },
+  { href: '/admin/copy-trade', label: 'Copy Trade', icon: Copy },
   { href: '/admin/payment-settings', label: 'Payment Settings', icon: CreditCard },
   { href: '/admin/reports', label: 'Reports', icon: BarChart3 },
   { href: '/admin/settings', label: 'Settings', icon: Cog },

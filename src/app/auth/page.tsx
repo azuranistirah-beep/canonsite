@@ -70,6 +70,75 @@ function getPasswordStrength(password: string): { strength: 'weak' | 'medium' | 
 
 const ADMIN_EMAIL = 'support@investoft.com';
 
+const COUNTRY_CODES = [
+  { code: '+1', flag: '🇺🇸', name: 'United States' },
+  { code: '+44', flag: '🇬🇧', name: 'United Kingdom' },
+  { code: '+62', flag: '🇮🇩', name: 'Indonesia' },
+  { code: '+65', flag: '🇸🇬', name: 'Singapore' },
+  { code: '+60', flag: '🇲🇾', name: 'Malaysia' },
+  { code: '+61', flag: '🇦🇺', name: 'Australia' },
+  { code: '+81', flag: '🇯🇵', name: 'Japan' },
+  { code: '+86', flag: '🇨🇳', name: 'China' },
+  { code: '+91', flag: '🇮🇳', name: 'India' },
+  { code: '+971', flag: '🇦🇪', name: 'UAE' },
+  { code: '+966', flag: '🇸🇦', name: 'Saudi Arabia' },
+  { code: '+974', flag: '🇶🇦', name: 'Qatar' },
+  { code: '+965', flag: '🇰🇼', name: 'Kuwait' },
+  { code: '+973', flag: '🇧🇭', name: 'Bahrain' },
+  { code: '+968', flag: '🇴🇲', name: 'Oman' },
+  { code: '+63', flag: '🇵🇭', name: 'Philippines' },
+  { code: '+66', flag: '🇹🇭', name: 'Thailand' },
+  { code: '+84', flag: '🇻🇳', name: 'Vietnam' },
+  { code: '+82', flag: '🇰🇷', name: 'South Korea' },
+  { code: '+886', flag: '🇹🇼', name: 'Taiwan' },
+  { code: '+852', flag: '🇭🇰', name: 'Hong Kong' },
+  { code: '+880', flag: '🇧🇩', name: 'Bangladesh' },
+  { code: '+94', flag: '🇱🇰', name: 'Sri Lanka' },
+  { code: '+977', flag: '🇳🇵', name: 'Nepal' },
+  { code: '+92', flag: '🇵🇰', name: 'Pakistan' },
+  { code: '+20', flag: '🇪🇬', name: 'Egypt' },
+  { code: '+234', flag: '🇳🇬', name: 'Nigeria' },
+  { code: '+27', flag: '🇿🇦', name: 'South Africa' },
+  { code: '+254', flag: '🇰🇪', name: 'Kenya' },
+  { code: '+233', flag: '🇬🇭', name: 'Ghana' },
+  { code: '+212', flag: '🇲🇦', name: 'Morocco' },
+  { code: '+216', flag: '🇹🇳', name: 'Tunisia' },
+  { code: '+213', flag: '🇩🇿', name: 'Algeria' },
+  { code: '+49', flag: '🇩🇪', name: 'Germany' },
+  { code: '+33', flag: '🇫🇷', name: 'France' },
+  { code: '+39', flag: '🇮🇹', name: 'Italy' },
+  { code: '+34', flag: '🇪🇸', name: 'Spain' },
+  { code: '+31', flag: '🇳🇱', name: 'Netherlands' },
+  { code: '+46', flag: '🇸🇪', name: 'Sweden' },
+  { code: '+47', flag: '🇳🇴', name: 'Norway' },
+  { code: '+45', flag: '🇩🇰', name: 'Denmark' },
+  { code: '+358', flag: '🇫🇮', name: 'Finland' },
+  { code: '+41', flag: '🇨🇭', name: 'Switzerland' },
+  { code: '+43', flag: '🇦🇹', name: 'Austria' },
+  { code: '+32', flag: '🇧🇪', name: 'Belgium' },
+  { code: '+48', flag: '🇵🇱', name: 'Poland' },
+  { code: '+7', flag: '🇷🇺', name: 'Russia' },
+  { code: '+380', flag: '🇺🇦', name: 'Ukraine' },
+  { code: '+90', flag: '🇹🇷', name: 'Turkey' },
+  { code: '+30', flag: '🇬🇷', name: 'Greece' },
+  { code: '+351', flag: '🇵🇹', name: 'Portugal' },
+  { code: '+55', flag: '🇧🇷', name: 'Brazil' },
+  { code: '+52', flag: '🇲🇽', name: 'Mexico' },
+  { code: '+54', flag: '🇦🇷', name: 'Argentina' },
+  { code: '+56', flag: '🇨🇱', name: 'Chile' },
+  { code: '+57', flag: '🇨🇴', name: 'Colombia' },
+  { code: '+51', flag: '🇵🇪', name: 'Peru' },
+  { code: '+58', flag: '🇻🇪', name: 'Venezuela' },
+  { code: '+1-CA', flag: '🇨🇦', name: 'Canada' },
+  { code: '+64', flag: '🇳🇿', name: 'New Zealand' },
+  { code: '+353', flag: '🇮🇪', name: 'Ireland' },
+  { code: '+972', flag: '🇮🇱', name: 'Israel' },
+  { code: '+98', flag: '🇮🇷', name: 'Iran' },
+  { code: '+964', flag: '🇮🇶', name: 'Iraq' },
+  { code: '+962', flag: '🇯🇴', name: 'Jordan' },
+  { code: '+961', flag: '🇱🇧', name: 'Lebanon' },
+];
+
 function AuthPageInner() {
   const router = useRouter();
   const { user, loading, signUp, signIn, rateLimited, setHardNavigating } = useAuth();
@@ -98,6 +167,7 @@ function AuthPageInner() {
   // Sign Up fields
   const [suEmail, setSuEmail] = useState('');
   const [suPhone, setSuPhone] = useState('');
+  const [selectedCountryCode, setSelectedCountryCode] = useState('+1');
   const [suPassword, setSuPassword] = useState('');
   const [suConfirmPass, setSuConfirmPass] = useState('');
   const [suShowPass, setSuShowPass] = useState(false);
@@ -106,6 +176,7 @@ function AuthPageInner() {
   const [suLoading, setSuLoading] = useState(false);
   const [suError, setSuError] = useState('');
   const [suSuccess, setSuSuccess] = useState('');
+  const signupJustCompletedRef = useRef(false);
 
   // OTP
   const [otpStep, setOtpStep] = useState(false);
@@ -130,7 +201,7 @@ function AuthPageInner() {
   // If already logged in, redirect based on email
   // Only fires if we haven't already triggered a redirect from handleSignIn
   useEffect(() => {
-    if (!loading && user && !redirectingRef.current) {
+    if (!loading && user && !redirectingRef.current && !signupJustCompletedRef.current) {
       redirectingRef.current = true;
       const dest = user.email === ADMIN_EMAIL ? '/admin' : '/trade';
       window.location.href = dest;
@@ -395,7 +466,9 @@ function AuthPageInner() {
 
     setSuLoading(true);
     try {
-      await signUp(suEmail, suPassword, suPhone);
+      const phoneValue = suPhone ? selectedCountryCode + ' ' + suPhone : '';
+      await signUp(suEmail, suPassword, { phone: phoneValue });
+      signupJustCompletedRef.current = true;
       setSuSuccess('Account created successfully! Please check your email for confirmation.');
     } catch (err: any) {
       const msg = err?.message || String(err) || '';
@@ -533,7 +606,7 @@ function AuthPageInner() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setForgotMode(false); setForgotMsg(''); }}
+                  onClick={() => { setForgotMode(true); setForgotEmail(siEmail); setForgotMsg(''); }}
                   className="w-full py-2 text-sm text-gray-400 hover:text-gray-300 transition-colors"
                 >
                   &#8592; Back to Login
@@ -652,14 +725,27 @@ function AuthPageInner() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1">Phone Number (optional)</label>
-                  <input
-                    type="tel"
-                    value={suPhone}
-                    onChange={(e) => setSuPhone(e.target.value)}
-                    placeholder="+62812345678"
-                    className="w-full px-4 py-3 rounded-xl text-white placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
-                  />
+                  <div className="flex gap-2">
+                    <select
+                      value={selectedCountryCode}
+                      onChange={(e) => setSelectedCountryCode(e.target.value)}
+                      className="w-2/5 px-3 py-3 rounded-xl text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-800 border border-slate-700"
+                    >
+                      {COUNTRY_CODES.map((c) => (
+                        <option key={c.code} value={c.code} style={{ background: '#1e293b' }}>
+                          {c.flag} {c.name} ({c.code})
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="tel"
+                      value={suPhone}
+                      onChange={(e) => setSuPhone(e.target.value.replace(/[^0-9]/g, ''))}
+                      placeholder="2125551234"
+                      className="flex-1 px-4 py-3 rounded-xl text-white placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)' }}
+                    />
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1">Password</label>
