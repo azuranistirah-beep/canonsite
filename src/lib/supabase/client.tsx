@@ -13,8 +13,8 @@ export function createClient() {
   if (!(globalThis as any)[SUPABASE_SINGLETON_KEY]) {
     _instanceId = Math.random().toString(36).slice(2, 8).toUpperCase();
 
-    // createBrowserClient from @supabase/ssr uses cookies by default,
-    // which is compatible with SSR and works even when localStorage is disabled.
+    // createBrowserClient from @supabase/ssr automatically syncs the session
+    // to cookies, which allows the server-side middleware to read the session.
     const client = createBrowserClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -32,11 +32,21 @@ export function createClient() {
   return (globalThis as any)[SUPABASE_SINGLETON_KEY];
 }
 
-// Kept for backward compatibility — no-op in SSR cookie mode
+// Kept for backward compatibility
 export function clearSupabaseAuthStorage(): void {
-  // Cookies are managed by the browser/server automatically
+  if (typeof window === 'undefined') return;
+  try {
+    // Clear all supabase-related storage keys
+    const keys = Object.keys(localStorage).filter(k => k.startsWith('sb-'));
+    keys.forEach(k => localStorage.removeItem(k));
+  } catch { /* ignore */ }
 }
 
-export function incrementAuthCounter(_key: 'getSession' | 'onAuthStateChange') {
-  // no-op
+export function incrementAuthCounter(key: 'getSession' | 'onAuthStateChange') {
+  if (typeof window === 'undefined') return;
+  try {
+    const counters = (window as any).__authCallCounters || {};
+    counters[key] = (counters[key] ?? 0) + 1;
+    (window as any).__authCallCounters = counters;
+  } catch { /* ignore */ }
 }

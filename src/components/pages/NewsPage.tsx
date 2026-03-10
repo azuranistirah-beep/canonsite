@@ -21,7 +21,7 @@ const newsArticles: NewsArticle[] = [
   source: 'CoinDesk',
   time: '2 hours ago',
   category: 'Crypto',
-  imageUrl: "https://img.rocket.new/generatedImages/rocket_gen_img_1cf599911-1771082008843.png",
+  imageUrl: "https://img.rocket.new/generatedImages/rocket_gen_img_1efca1ed9-1764687356750.png",
   url: '#'
 },
 {
@@ -31,7 +31,7 @@ const newsArticles: NewsArticle[] = [
   source: 'Reuters',
   time: '4 hours ago',
   category: 'Economy',
-  imageUrl: "https://img.rocket.new/generatedImages/rocket_gen_img_12e642b8a-1772057581366.png",
+  imageUrl: "https://img.rocket.new/generatedImages/rocket_gen_img_1e777d430-1770842233753.png",
   url: '#'
 },
 {
@@ -51,7 +51,7 @@ const newsArticles: NewsArticle[] = [
   source: 'FX Street',
   time: '8 hours ago',
   category: 'Forex',
-  imageUrl: "https://img.rocket.new/generatedImages/rocket_gen_img_1358c8a4a-1768855583419.png",
+  imageUrl: "https://img.rocket.new/generatedImages/rocket_gen_img_18ad27aef-1767816271553.png",
   url: '#'
 },
 {
@@ -61,7 +61,7 @@ const newsArticles: NewsArticle[] = [
   source: 'MarketWatch',
   time: '10 hours ago',
   category: 'Commodities',
-  imageUrl: "https://img.rocket.new/generatedImages/rocket_gen_img_1c0d03ee7-1772057581604.png",
+  imageUrl: "https://img.rocket.new/generatedImages/rocket_gen_img_18940c041-1773085255674.png",
   url: '#'
 },
 {
@@ -71,7 +71,7 @@ const newsArticles: NewsArticle[] = [
   source: 'CNBC',
   time: '12 hours ago',
   category: 'Stocks',
-  imageUrl: "https://img.rocket.new/generatedImages/rocket_gen_img_1463ceadf-1765424448972.png",
+  imageUrl: "https://img.rocket.new/generatedImages/rocket_gen_img_1a89080dc-1767520292816.png",
   url: '#'
 },
 {
@@ -81,7 +81,7 @@ const newsArticles: NewsArticle[] = [
   source: 'The Block',
   time: '1 day ago',
   category: 'Crypto',
-  imageUrl: "https://img.rocket.new/generatedImages/rocket_gen_img_1f6548682-1766305819081.png",
+  imageUrl: "https://img.rocket.new/generatedImages/rocket_gen_img_1c3c29725-1768044740945.png",
   url: '#'
 },
 {
@@ -91,7 +91,7 @@ const newsArticles: NewsArticle[] = [
   source: 'Reuters',
   time: '1 day ago',
   category: 'Commodities',
-  imageUrl: "https://img.rocket.new/generatedImages/rocket_gen_img_1914c2e96-1771109986987.png",
+  imageUrl: "https://img.rocket.new/generatedImages/rocket_gen_img_197e572a0-1767285478621.png",
   url: '#'
 },
 {
@@ -101,7 +101,7 @@ const newsArticles: NewsArticle[] = [
   source: 'TechCrunch',
   time: '2 days ago',
   category: 'Stocks',
-  imageUrl: "https://img.rocket.new/generatedImages/rocket_gen_img_177c87ef5-1769233350641.png",
+  imageUrl: "https://images.unsplash.com/photo-1735405072501-b803f8eb8db9",
   url: '#'
 },
 {
@@ -111,7 +111,7 @@ const newsArticles: NewsArticle[] = [
   source: 'FX Street',
   time: '2 days ago',
   category: 'Forex',
-  imageUrl: "https://img.rocket.new/generatedImages/rocket_gen_img_16c1690f9-1771578105837.png",
+  imageUrl: "https://img.rocket.new/generatedImages/rocket_gen_img_1d7272e42-1765835016989.png",
   url: '#'
 },
 {
@@ -121,7 +121,7 @@ const newsArticles: NewsArticle[] = [
   source: 'Financial Times',
   time: '3 days ago',
   category: 'Economy',
-  imageUrl: "https://img.rocket.new/generatedImages/rocket_gen_img_157d7d30a-1768683531387.png",
+  imageUrl: "https://img.rocket.new/generatedImages/rocket_gen_img_1415a142b-1772395238600.png",
   url: '#'
 },
 {
@@ -131,7 +131,7 @@ const newsArticles: NewsArticle[] = [
   source: 'Decrypt',
   time: '3 days ago',
   category: 'Crypto',
-  imageUrl: "https://img.rocket.new/generatedImages/rocket_gen_img_1de99562f-1764668558407.png",
+  imageUrl: "https://img.rocket.new/generatedImages/rocket_gen_img_1335b79e0-1767947342617.png",
   url: '#'
 }];
 

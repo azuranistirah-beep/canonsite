@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import CopyTradePage from '@/components/pages/CopyTradePage';
 import TradeMainContent from '@/components/pages/TradeMainContent';
@@ -37,6 +38,7 @@ interface Trade {
   direction: 'buy' | 'sell';
   amount: number;
   entry_price: number;
+  close_price?: number;
   duration_seconds: number;
   status: 'pending' | 'active' | 'won' | 'lost' | 'cancelled';
   profit_loss: number;
@@ -103,7 +105,16 @@ interface PriceMovementAlert {
   dismissed: boolean;
 }
 
-// ─── Currency Config ──────────────────────────────────────────────────────────
+interface TxItem {
+  id: string;
+  type: 'deposit' | 'withdrawal';
+  amount: number;
+  currency: string;
+  status: string;
+  created_at: string;
+}
+
+// ─── Currency Config ──────────────────────────────────────────────────────────────────────────────────────
 interface Currency {
   code: string;
   symbol: string;
@@ -216,16 +227,31 @@ const ASSETS: Asset[] = [
   { symbol: 'NVDA', name: 'NVIDIA Corp.', tvSymbol: 'NASDAQ:NVDA', exchange: 'NASDAQ', category: 'stock', payout: 95 },
 ];
 
-// ─── Duration Presets (FIX 7: start from 5s) ─────────────────────────────────
+// ─── Duration Presets (FULL LIST: 23 options) ─────────────────────────────────
 const DURATION_PRESETS = [
   { label: '5s', seconds: 5 },
+  { label: '10s', seconds: 10 },
   { label: '15s', seconds: 15 },
+  { label: '20s', seconds: 20 },
   { label: '30s', seconds: 30 },
   { label: '1m', seconds: 60 },
+  { label: '2m', seconds: 120 },
+  { label: '3m', seconds: 180 },
   { label: '5m', seconds: 300 },
-  { label: '15m', seconds: 900 },
+  { label: '10m', seconds: 600 },
+  { label: '20m', seconds: 1200 },
   { label: '30m', seconds: 1800 },
+  { label: '40m', seconds: 2400 },
+  { label: '50m', seconds: 3000 },
   { label: '1h', seconds: 3600 },
+  { label: '2h', seconds: 7200 },
+  { label: '3h', seconds: 10800 },
+  { label: '4h', seconds: 14400 },
+  { label: '6h', seconds: 21600 },
+  { label: '9h', seconds: 32400 },
+  { label: '12h', seconds: 43200 },
+  { label: '1d', seconds: 86400 },
+  { label: '2d', seconds: 172800 },
 ];
 
 const AMOUNT_PRESETS = [10, 50, 100, 500];
@@ -289,7 +315,7 @@ const DASHBOARD_STYLES = `
   .td-dashboard-root {
     height: 100vh;
     overflow: hidden;
-    background: #0a0e1a;
+    background: #000000;
     color: #e2e8f0;
     font-family: Inter, -apple-system, sans-serif;
     display: flex;
@@ -300,33 +326,35 @@ const DASHBOARD_STYLES = `
   .td-controls-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    padding: 10px;
-    background: #0d1224;
-    border-top: 1px solid #1e2a45;
+    gap: 8px;
+    padding: 8px 10px;
+    background: #000000;
+    border-top: 1px solid #1a1a1a;
     flex-shrink: 0;
   }
   .td-control-col {
     display: flex;
     flex-direction: column;
-    background: #111827;
-    border-radius: 8px;
+    background: #111111;
+    border-radius: 12px;
     padding: 10px 12px;
-    border: 1px solid #1e2a45;
+    border: 1px solid rgba(63,63,70,0.5);
+    gap: 6px;
+    flex-shrink: 0;
   }
 
   /* ── Trade Buttons ── */
   .td-trade-btn {
     width: 100%;
-    padding: 12px 6px;
+    padding: 0;
     border: none;
-    border-radius: 8px;
+    border-radius: 12px;
     cursor: pointer;
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
     gap: 2px;
-    margin-top: 8px;
     flex-shrink: 0;
     transition: all 0.15s ease;
   }
@@ -335,10 +363,9 @@ const DASHBOARD_STYLES = `
     filter: brightness(0.9);
   }
   .td-trade-panel {
-    display: flex;
-    flex-direction: column;
     flex-shrink: 0;
-    background: #0d1224;
+    height: auto;
+    overflow: visible;
   }
 
   /* ── Asset Panel (floating dropdown overlay) ── */
@@ -348,10 +375,10 @@ const DASHBOARD_STYLES = `
     left: 0;
     width: 300px;
     max-height: 420px;
-    background: #0d1224;
-    border: 1px solid #2d3f5e;
+    background: #111111;
+    border: 1px solid #27272a;
     border-radius: 10px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.8);
     z-index: 300;
     display: flex;
     flex-direction: column;
@@ -406,17 +433,22 @@ const DASHBOARD_STYLES = `
     left: 0;
     right: 0;
     height: 52px;
-    background: #0d1224;
-    border-top: 1px solid #1e2a45;
+    background: #000000;
+    border-top: 1px solid #1a1a1a;
     z-index: 100;
     padding-bottom: env(safe-area-inset-bottom);
   }
   .td-main-wrapper {
-    padding-bottom: 52px;
+    padding-bottom: 56px;
+    overflow: visible;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
   }
 
   /* ── Desktop layout: chart fills remaining height ── */
-  @media (min-width: 769px) {
+@media (min-width: 769px) {
     .td-main-content {
       flex: 1;
       display: flex;
@@ -425,16 +457,17 @@ const DASHBOARD_STYLES = `
       min-height: 0;
     }
     .td-chart-area {
-      flex: 1;
+      height: calc(100vh - 52px - 40px - 32px - 36px - 200px);
+      flex: none;
+      min-height: 300px;
       display: flex;
       flex-direction: column;
       overflow: hidden;
-      min-height: 0;
     }
     .td-chart-container {
       flex: 1;
       position: relative;
-      background: #0a0e1a;
+      background: #000000;
       width: 100%;
       min-height: 0;
     }
@@ -447,55 +480,90 @@ const DASHBOARD_STYLES = `
     }
     .td-trade-panel {
       flex-shrink: 0;
+      height: auto;
+      overflow: visible;
+    }
+    .td-controls-grid {
+      flex-shrink: 0;
+      height: auto;
+    }
+    .td-main-wrapper {
+      padding-bottom: 56px;
+      overflow: visible;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
     }
   }
 
   /* ── Tablet (768-1279px) ── */
   @media (min-width: 769px) and (max-width: 1279px) {
-    .td-controls-grid { gap: 8px !important; padding: 8px !important; }
+    .td-controls-grid { gap: 6px !important; padding: 6px 8px !important; }
     .td-control-col { padding: 8px 10px !important; }
     .td-preset-btn { font-size: 10px !important; }
   }
 
   /* ── Mobile (<768px) ── */
   @media (max-width: 768px) {
-    .td-dashboard-root { height: 100vh; overflow: hidden; }
-    .td-header-row {
-      flex-wrap: nowrap !important;
-      gap: 6px !important;
-      padding: 0 10px !important;
-      min-height: 48px !important;
-      height: 48px !important;
+    /* Root: pure black bg */
+    .td-dashboard-root {
+      height: 100dvh !important;
+      overflow: hidden !important;
+      background: #000000 !important;
     }
-    .td-logo-text { font-size: 13px !important; }
-    .td-header-balance-text { font-size: 9px !important; }
-    .td-header-balance-amount { font-size: 13px !important; }
-    .td-header-deposit-btn { font-size: 11px !important; padding: 4px 8px !important; }
-    .td-header-icon-btn { padding: 2px !important; }
 
-    /* Mobile main wrapper: scrollable, no fixed height that creates black space */
+    /* Header: pure black, 56px */
+    .td-header-row {
+      background: #000000 !important;
+      height: 56px !important;
+      min-height: 56px !important;
+      padding: 0 16px !important;
+      border-bottom: 1px solid #1a1a1a !important;
+      border-top: 1px solid #1a1a1a !important;
+      flex-shrink: 0;
+    }
+    /* Hide desktop header elements on mobile */
+    .td-header-desktop-only { display: none !important; }
+    /* Show mobile header elements */
+    .td-header-mobile-only { display: flex !important; }
+
+    /* Asset row: pure black, 44px */
+    .td-asset-row-mobile {
+      background: #000000 !important;
+      border-bottom: 1px solid #1a1a1a !important;
+      height: 44px !important;
+    }
+    /* Hide desktop asset bar on mobile */
+    .td-asset-bar-desktop { display: none !important; }
+    /* Show mobile asset row */
+    .td-asset-bar-mobile { display: flex !important; }
+
+    /* Main wrapper */
     .td-main-wrapper {
       padding-bottom: 52px !important;
+      overflow: visible !important;
+      display: flex !important;
+      flex-direction: column !important;
+      flex: 1 !important;
+      min-height: 0 !important;
     }
 
-    /* Mobile main content: column layout, auto height — no fixed height */
+    /* Main content */
     .td-main-content {
       flex-direction: column !important;
-      overflow-y: auto !important;
-      overflow-x: hidden !important;
+      overflow: hidden !important;
       flex: 1 !important;
       min-height: 0 !important;
       display: flex !important;
       height: auto !important;
     }
 
-    /* Chart area: bigger on mobile, calc-based height */
+    /* Chart area */
     .td-chart-area {
-      flex: none !important;
+      flex: 1 !important;
       width: 100% !important;
-      height: calc(100vh - 340px) !important;
       min-height: 240px !important;
-      max-height: 380px !important;
       overflow: hidden !important;
       display: flex !important;
       flex-direction: column !important;
@@ -512,12 +580,20 @@ const DASHBOARD_STYLES = `
       height: 100% !important;
     }
 
-    /* Trade panel: auto height, no overflow that creates empty space */
+    /* Hide search toolbar on mobile */
+    .td-search-toolbar { display: none !important; }
+
+    /* Trade panel: auto height */
     .td-trade-panel {
       flex: none !important;
       height: auto !important;
       overflow: visible !important;
     }
+
+    /* Hide desktop controls grid on mobile */
+    .td-controls-grid-desktop { display: none !important; }
+    /* Show mobile controls */
+    .td-mobile-controls { display: flex !important; }
 
     /* Asset panel on mobile: full-width dropdown */
     .td-asset-panel {
@@ -526,48 +602,80 @@ const DASHBOARD_STYLES = `
       max-height: 70vh !important;
     }
 
-    /* Controls grid: compact 2-col */
-    .td-controls-grid {
-      grid-template-columns: 1fr 1fr !important;
-      gap: 4px !important;
-      padding: 4px !important;
+    /* Bottom nav: pure black */
+    .td-bottom-nav {
+      background: #000000 !important;
+      border-top: 1px solid #1a1a1a !important;
+      height: 52px !important;
     }
-    .td-control-col { padding: 5px 7px !important; }
-    .td-control-label { font-size: 10px !important; }
-    .td-control-value-btn { font-size: 11px !important; padding: 2px 6px !important; }
-    .td-range-input { height: 3px !important; }
-    .td-range-labels { font-size: 9px !important; }
-    .td-duration-presets { grid-template-columns: repeat(4, 1fr) !important; gap: 3px !important; }
-    .td-amount-presets { grid-template-columns: repeat(5, 1fr) !important; gap: 3px !important; }
-    .td-preset-btn { font-size: 10px !important; padding: 3px 2px !important; }
-    .td-sell-btn.td-trade-btn { height: 40px !important; font-size: 13px !important; margin-top: 4px !important; }
-    .td-buy-btn.td-trade-btn { height: 40px !important; font-size: 13px !important; margin-top: 4px !important; }
-    .td-trade-btn-payout { font-size: 9px !important; }
-    .td-balance-text { font-size: 9px !important; margin-top: 2px !important; }
   }
 
   /* ── Very small screens ── */
   @media (max-width: 374px) {
-    .td-chart-area { min-height: 200px !important; max-height: 280px !important; height: calc(100vh - 360px) !important; }
-    .td-controls-grid { gap: 3px !important; padding: 3px !important; }
-    .td-control-col { padding: 4px 5px !important; }
-    .td-preset-btn { font-size: 9px !important; padding: 2px 1px !important; }
-    .td-sell-btn.td-trade-btn { height: 36px !important; font-size: 12px !important; }
-    .td-buy-btn.td-trade-btn { height: 36px !important; font-size: 12px !important; }
+    .td-chart-area { min-height: 200px !important; }
   }
 
   /* ── Landscape mobile ── */
   @media (orientation: landscape) and (max-width: 900px) {
-    .td-chart-area { min-height: 150px !important; max-height: 180px !important; height: 45% !important; }
+    .td-chart-area { min-height: 150px !important; }
   }
 `;
+
+// ─── Active Trade Row Component ───────────────────────────────────────────────
+function ActiveTradeRow({ trade }: { trade: Trade }) {
+  const [remaining, setRemaining] = React.useState(() => {
+    const elapsed = Math.floor((Date.now() - new Date(trade.opened_at).getTime()) / 1000);
+    return Math.max(0, trade.duration_seconds - elapsed);
+  });
+
+  useEffect(() => {
+    if (remaining <= 0) return;
+    const interval = setInterval(() => {
+      setRemaining(prev => {
+        const elapsed = Math.floor((Date.now() - new Date(trade.opened_at).getTime()) / 1000);
+        return Math.max(0, trade.duration_seconds - elapsed);
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [trade.opened_at, trade.duration_seconds, remaining]);
+
+  const mm = String(Math.floor(remaining / 60)).padStart(2, '0');
+  const ss = String(remaining % 60).padStart(2, '0');
+
+  return (
+    <div className="bg-zinc-800 rounded-xl p-3 mb-2">
+      <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center gap-2">
+          <span className="text-white font-bold text-sm">{trade.asset_symbol}</span>
+          <span
+            className={`text-white text-xs px-2 py-0.5 rounded-full font-semibold ${
+              trade.direction === 'buy' ? 'bg-green-600' : 'bg-red-600'
+            }`}
+          >
+            {trade.direction.toUpperCase()}
+          </span>
+        </div>
+        <span className="text-white text-sm">${trade.amount}</span>
+      </div>
+      <div className="flex items-center justify-between">
+        <span className="text-zinc-400 text-xs">Entry: ${trade.entry_price}</span>
+        {remaining === 0 ? (
+          <span className="text-yellow-400 text-xs font-semibold">Settling...</span>
+        ) : (
+          <span className="text-blue-400 font-mono text-sm">{mm}:{ss}</span>
+        )}
+      </div>
+    </div>
+  );
+}
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 export default function TradeDashboardPage() {
   const { t } = useLanguage();
+  const { user, session: authSession } = useAuth();
 
   // ── Auth & Profile ──
-  const [userId, setUserId] = useState<string | null>(null);
+  const userId = user?.id ?? null;
   const [demoBalance, setDemoBalance] = useState(10000);
   const [realBalance, setRealBalance] = useState(0);
   const [accountType, setAccountType] = useState<'demo' | 'real'>('demo');
@@ -576,6 +684,7 @@ export default function TradeDashboardPage() {
   const [currency, setCurrency] = useState<Currency>(CURRENCIES[0]);
   const [showCurrencyPicker, setShowCurrencyPicker] = useState(false);
   const [copyTradeActive, setCopyTradeActive] = useState(false);
+  const [showAccountDropdown, setShowAccountDropdown] = useState(false);
 
   // ── Asset & Price ──
   const [selectedAsset, setSelectedAsset] = useState<Asset>(ASSETS[0]);
@@ -586,10 +695,15 @@ export default function TradeDashboardPage() {
   const [tvPrice, setTvPrice] = useState(0);
   const [priceTimestamps, setPriceTimestamps] = useState<Record<string, any>>({});
   const [priceMovementAlerts, setPriceMovementAlerts] = useState<PriceMovementAlert[]>([]);
+  const tvPriceRef = useRef<number>(0);
+  const prevTvPriceRef = useRef<number>(0);
+  const [priceFlashColor, setPriceFlashColor] = useState<'#10b981' | '#ef4444' | '#ffffff'>('#ffffff');
+  const accountTypeRef = useRef<'demo' | 'real'>(accountType);
+  const currentBalanceRef = useRef<number>(0);
 
   // ── Trade Form ──
-  const [amount, setAmount] = useState(10);
-  const [amountInput, setAmountInput] = useState('10');
+  const [amount, setAmount] = useState(1);
+  const [amountInput, setAmountInput] = useState('1');
   const [isEditingAmount, setIsEditingAmount] = useState(false);
   // FIX 7: default duration 60s (1m), min 5s
   const [duration, setDuration] = useState(60);
@@ -603,6 +717,7 @@ export default function TradeDashboardPage() {
   const [activeTrades, setActiveTrades] = useState<Trade[]>([]);
   const [tradeHistory, setTradeHistory] = useState<Trade[]>([]);
   const [showHistory, setShowHistory] = useState(false);
+  const [showActiveTradesPanel, setShowActiveTradesPanel] = useState(false);
 
   // ── Notifications ──
   const [tradeNotification, setTradeNotification] = useState<TradeNotification>({
@@ -615,7 +730,7 @@ export default function TradeDashboardPage() {
 
   // ── Settings ──
   const [showSettings, setShowSettings] = useState(false);
-  const [autoConfirm, setAutoConfirm] = useState(false);
+  const [autoConfirm, setAutoConfirm] = useState(true);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [defaultAmount, setDefaultAmount] = useState(10);
   const [defaultTimeframe, setDefaultTimeframe] = useState('1m');
@@ -634,6 +749,27 @@ export default function TradeDashboardPage() {
   const [showDepositCurrencyDropdown, setShowDepositCurrencyDropdown] = useState(false);
   const [depositCurrency, setDepositCurrency] = useState<Currency>(CURRENCIES[0]);
 
+  // ── Account Tab: Edit Profile ──
+  const [profileFullName, setProfileFullName] = useState('');
+  const [profilePhone, setProfilePhone] = useState('');
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileMsg, setProfileMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // ── Account Tab: Change Password ──
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordMismatch, setPasswordMismatch] = useState(false);
+  const [passwordMsg, setPasswordMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // ── Account Tab: Accordion ──
+  const [accExpandedSection, setAccExpandedSection] = useState<string | null>(null);
+
+  // ── Account Tab: Transaction History ──
+  const [txHistory, setTxHistory] = useState<TxItem[]>([]);
+  const [txLoading, setTxLoading] = useState(false);
+
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const tvWidgetRef = useRef<HTMLIFrameElement>(null);
   const priceIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -644,34 +780,176 @@ export default function TradeDashboardPage() {
   const currentBalance = accountType === 'demo' ? demoBalance : realBalance;
   const isPriceKadaluarsa = tvPrice <= 0;
 
+  // ── Sync auth state from AuthContext user ──
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (data?.user) {
-        setUserId(data.user.id);
-        setIsEmailVerified(!!data.user.email_confirmed_at);
-        setUserEmail(data.user.email || '');
-        fetchProfile(data.user.id);
-        fetchAlerts(data.user.id);
-        fetchTrades(data.user.id);
+    if (user) {
+      setIsEmailVerified(!!user.email_confirmed_at);
+      setUserEmail(user.email || '');
+      fetchProfile(user.id);
+      fetchAlerts(user.id);
+      fetchTrades(user.id);
+    } else {
+      setIsEmailVerified(false);
+      setUserEmail('');
+    }
+  }, [user?.id]);
+
+  useEffect(() => { accountTypeRef.current = accountType; }, [accountType]);
+  useEffect(() => { currentBalanceRef.current = currentBalance; }, [currentBalance]);
+
+  // ── Sync prices to tvPrice ──
+  useEffect(() => {
+    const p = prices[selectedAsset.symbol]?.price;
+    console.log(`[tvPrice] selectedAsset=${selectedAsset.symbol} | prices[symbol]=${p} | setting tvPrice=${p && p > 0 ? p : '(skipped, keeping current)'}`);
+    if (p && p > 0) {
+      setTvPrice(p);
+      tvPriceRef.current = p;
+      if (prevTvPriceRef.current > 0 && p !== prevTvPriceRef.current) {
+        const color = p > prevTvPriceRef.current ? '#10b981' : '#ef4444';
+        setPriceFlashColor(color);
+        setTimeout(() => setPriceFlashColor('#ffffff'), 300);
       }
+      prevTvPriceRef.current = p;
+    }
+  }, [prices, selectedAsset.symbol]);
+
+  // ── Forex/commodity/stock symbol key mapping ──
+  const FOREX_KEY_MAP: Record<string, string> = {
+    'XAU/USD': 'Gold',
+    'XAG/USD': 'Silver',
+    'OIL/USD': 'Crude Oil',
+    'XPT/USD': 'Platinum',
+    'COPPER': 'Copper',
+    'NATGAS': 'Natural Gas',
+    'WHEAT': 'Wheat',
+    'CORN': 'Corn',
+  };
+
+  // ── Fetch all asset prices ──
+  const fetchAllPrices = useCallback(async () => {
+    const cryptoAssets = ASSETS.filter(a => a.binanceSymbol);
+    const forexAssets = ASSETS.filter(a => !a.binanceSymbol);
+
+    // Fetch crypto prices in parallel
+    const cryptoResults = await Promise.allSettled(
+      cryptoAssets.map(async (asset) => {
+        try {
+          const res = await fetch(`/api/prices/binance?symbol=${asset.binanceSymbol}`);
+          const data = await res.json();
+          console.log(`[fetchAllPrices] symbol=${asset.symbol} | status=${res.status} | price=${data?.price}`);
+          if (!res.ok || !data.price || data.price <= 0) return null;
+          return { symbol: asset.symbol, price: parseFloat(data.price), change24h: parseFloat(data.change24h) || 0 };
+        } catch (e: any) {
+          console.log(`[fetchAllPrices] symbol=${asset.symbol} | fetch error: ${e?.message}`);
+          return null;
+        }
+      })
+    );
+
+    // Fetch forex/commodity/stock prices in bulk
+    let forexData: Record<string, { price: number; change: number }> = {};
+    try {
+      const res = await fetch('/api/prices/forex');
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success && json.data) forexData = json.data;
+      }
+    } catch {}
+
+    setPrices(prev => {
+      const updated = { ...prev };
+
+      // Apply crypto results
+      cryptoResults.forEach((result, idx) => {
+        if (result.status === 'fulfilled' && result.value) {
+          const { symbol, price, change24h } = result.value;
+          updated[symbol] = {
+            price,
+            change24h,
+            prevPrice: prev[symbol]?.price || price,
+          };
+        }
+      });
+
+      // Apply forex/commodity/stock results
+      forexAssets.forEach(asset => {
+        const key = FOREX_KEY_MAP[asset.symbol] || asset.symbol;
+        const d = forexData[key];
+        if (d && d.price > 0) {
+          updated[asset.symbol] = {
+            price: d.price,
+            change24h: d.change || 0,
+            prevPrice: prev[asset.symbol]?.price || d.price,
+          };
+        }
+      });
+
+      return updated;
     });
   }, []);
 
+  // ── Start price polling on mount ──
+  useEffect(() => {
+    fetchAllPrices();
+    priceIntervalRef.current = setInterval(fetchAllPrices, 10000);
+    return () => {
+      if (priceIntervalRef.current) clearInterval(priceIntervalRef.current);
+    };
+  }, [fetchAllPrices]);
+
+  // ── Direct session recovery fallback (independent of AuthContext) ──
+  useEffect(() => {
+    const recoverSession = async () => {
+      if (user?.id) return;
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session?.user?.id) {
+          accountTypeRef.current = session.user.id;
+          fetchProfile(session.user.id);
+          fetchTrades(session.user.id);
+          fetchAlerts(session.user.id);
+          setIsEmailVerified(!!session.user.email_confirmed_at);
+          setUserEmail(session.user.email || '');
+        }
+      } catch (e) {
+        console.error('[TradePage] session recovery error:', e);
+      }
+    };
+    recoverSession();
+  }, []);
+
   const fetchProfile = useCallback(async (uid: string) => {
-    const { data } = await supabase
+    // Fetch copy_trade_active and currency from user_profiles (using correct PK 'id')
+    const { data: profileData } = await supabase
       .from('user_profiles')
-      .select('demo_balance, real_balance, currency, copy_trade_active')
-      .eq('user_id', uid)
+      .select('currency, copy_trade_active')
+      .eq('id', uid)
       .single();
-    if (data) {
-      setDemoBalance(data.demo_balance ?? 10000);
-      setRealBalance(data.real_balance ?? 0);
-      if (data.currency) {
-        const found = CURRENCIES.find(c => c.code === data.currency);
+    if (profileData) {
+      if (profileData.currency) {
+        const found = CURRENCIES.find(c => c.code === profileData.currency);
         if (found) setCurrency(found);
       }
-      setCopyTradeActive(data.copy_trade_active ?? false);
+      setCopyTradeActive(profileData.copy_trade_active ?? false);
     }
+    // Fetch demo balance from demo_accounts
+    const { data: demoData } = await supabase
+      .from('demo_accounts')
+      .select('balance')
+      .eq('user_id', uid)
+      .single();
+    if (demoData && demoData.balance != null && Number(demoData.balance) > 0) {
+      setDemoBalance(Number(demoData.balance));
+    } else {
+      setDemoBalance(10000);
+    }
+    // Fetch real balance from real_accounts
+    const { data: realData } = await supabase
+      .from('real_accounts')
+      .select('balance')
+      .eq('user_id', uid)
+      .single();
+    if (realData) setRealBalance(Number(realData.balance) || 0);
   }, []);
 
   const fetchAlerts = useCallback(async (uid: string) => {
@@ -731,83 +1009,101 @@ export default function TradeDashboardPage() {
     return prices[asset.symbol]?.price || 0;
   }, [fetchBinancePrice, fetchForexPrice, prices]);
 
-  useEffect(() => {
-    if (priceIntervalRef.current) clearInterval(priceIntervalRef.current);
-    const updatePrice = async () => {
-      const p = await fetchCurrentPrice(selectedAsset);
-      if (p > 0) {
-        setTvPrice(p);
-        setPrices(prev => ({
-          ...prev,
-          [selectedAsset.symbol]: {
-            price: p,
-            change24h: prev[selectedAsset.symbol]?.change24h || 0,
-            prevPrice: prev[selectedAsset.symbol]?.price || p,
-          },
-        }));
-      }
-    };
-    updatePrice();
-    priceIntervalRef.current = setInterval(updatePrice, 3000);
-    return () => { if (priceIntervalRef.current) clearInterval(priceIntervalRef.current); };
-  }, [selectedAsset, fetchCurrentPrice]);
-
   const addToast = useCallback((type: ToastAlert['type'], message: string) => {
     const id = Date.now().toString();
     setToasts(prev => [...prev, { id, type, message, visible: true }]);
     setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4000);
   }, []);
 
-  const handleTrade = useCallback(async (direction: 'buy' | 'sell') => {
-    if (!userId) { addToast('error', 'Please sign in to trade'); return; }
-    if (copyTradeActive) { addToast('warning', 'Copy Trade is active. Stop following to trade manually.'); return; }
-    if (!isEmailVerified && accountType === 'real') { addToast('warning', t('tradePanel.emailVerificationRequired')); return; }
-    if (amount < 1 || amount > 10000) { addToast('error', 'Amount must be between $1 and $10,000'); return; }
-    if (amount > currentBalance) { addToast('error', 'Insufficient balance'); return; }
-    if (tvPrice <= 0) { addToast('error', t('tradePanel.priceUnavailable')); return; }
-    if (!autoConfirm) { setPendingDirection(direction); setShowConfirm(true); return; }
-    await executeTrade(direction);
-  }, [userId, copyTradeActive, isEmailVerified, accountType, amount, currentBalance, tvPrice, autoConfirm, t]);
-
   const executeTrade = useCallback(async (direction: 'buy' | 'sell') => {
-    if (!userId) return;
+    // ── Ensure the singleton Supabase client has an active session ──────────
+    let { data: { session: execSession } } = await supabase.auth.getSession();
+
+    if (!execSession && authSession?.access_token && authSession?.refresh_token) {
+      try {
+        const { data: restored, error: setErr } = await supabase.auth.setSession({
+          access_token: authSession.access_token,
+          refresh_token: authSession.refresh_token,
+        });
+        if (!setErr && restored?.session) {
+          execSession = restored.session;
+        } else {
+          const { data: refreshed } = await supabase.auth.refreshSession();
+          if (refreshed?.session) execSession = refreshed.session;
+        }
+      } catch (e) {
+        console.warn('[executeTrade] session restore failed:', e);
+      }
+    }
+
+    if (!execSession) {
+      addToast('error', 'Silakan login untuk melakukan trade');
+      setIsPlacingTrade(false);
+      return;
+    }
+
+    const currentUserId = userId ?? user?.id ?? null;
+    if (!currentUserId) {
+      console.error('[executeTrade] userId is null — user not authenticated');
+      addToast('error', 'Please sign in to trade');
+      return;
+    }
     setIsPlacingTrade(true);
     try {
-      const payout = selectedAsset.payout;
-      const profit = amount * (payout / 100);
-      const { data, error } = await supabase.from('trades').insert({
-        user_id: userId,
-        asset_symbol: selectedAsset.symbol,
-        asset_name: selectedAsset.name,
-        direction,
-        amount,
-        entry_price: tvPrice,
-        duration_seconds: duration,
-        status: 'active',
-        profit_loss: 0,
-        account_type: accountType,
-        opened_at: new Date().toISOString(),
-      }).select().single();
-      if (error) throw error;
-      const balanceField = accountType === 'demo' ? 'demo_balance' : 'real_balance';
-      const newBalance = currentBalance - amount;
-      await supabase.from('user_profiles').update({ [balanceField]: newBalance }).eq('user_id', userId);
-      if (accountType === 'demo') setDemoBalance(newBalance);
+      const profit = amount * 0.95;
+      const totalReturn = amount + profit;
+      // Use server-side API route to insert trade (avoids client JWT propagation issues)
+      const res = await fetch('/api/trades/insert', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${execSession.access_token}`,
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          user_id: currentUserId,
+          asset_symbol: selectedAsset.symbol,
+          asset_name: selectedAsset.name,
+          direction,
+          amount,
+          entry_price: tvPrice,
+          duration_seconds: duration,
+          account_type: accountTypeRef.current,
+          opened_at: new Date().toISOString(),
+        }),
+      });
+      if (!res.ok) {
+        const errJson = await res.json();
+        throw errJson;
+      }
+      const data = await res.json();
+      const balanceTable = accountTypeRef.current === 'demo' ? 'demo_accounts' : 'real_accounts';
+      const newBalance = currentBalanceRef.current - amount;
+      const { error: balanceError } = await supabase.from(balanceTable).update({ balance: newBalance }).eq('user_id', currentUserId);
+      if (balanceError) {
+        console.error('[executeTrade] Balance update error:', JSON.stringify(balanceError));
+      }
+      if (accountTypeRef.current === 'demo') setDemoBalance(newBalance);
       else setRealBalance(newBalance);
       if (data) {
-        setActiveTrades(prev => [data as Trade, ...prev]);
+        setActiveTrades(prev => {
+          const updated = [data as Trade, ...prev];
+          if (prev.length === 0) setShowActiveTradesPanel(true);
+          return updated;
+        });
         addToast('success', `Trade opened: ${direction.toUpperCase()} ${selectedAsset.symbol} $${amount}`);
         setTimeout(async () => {
-          const won = Math.random() > 0.45;
+          const closePrice = tvPriceRef.current;
+          const won = Math.random() > 0.5;
           const result = won ? 'won' : 'lost';
           const pl = won ? profit : -amount;
-          const finalBalance = newBalance + (won ? amount + profit : 0);
-          await supabase.from('trades').update({ status: result, profit_loss: pl, closed_at: new Date().toISOString() }).eq('id', data.id);
-          await supabase.from('user_profiles').update({ [balanceField]: finalBalance }).eq('user_id', userId);
-          if (accountType === 'demo') setDemoBalance(finalBalance);
+          const finalBalance = won ? newBalance + totalReturn : newBalance;
+          await supabase.from('trades').update({ status: result, profit_loss: pl, closed_at: new Date().toISOString(), close_price: closePrice }).eq('id', data.id);
+          await supabase.from(balanceTable).update({ balance: finalBalance }).eq('user_id', currentUserId);
+          if (accountTypeRef.current === 'demo') setDemoBalance(finalBalance);
           else setRealBalance(finalBalance);
           setActiveTrades(prev => prev.filter(t => t.id !== data.id));
-          setTradeHistory(prev => [{ ...data, status: result, profit_loss: pl } as Trade, ...prev]);
+          setTradeHistory(prev => [{ ...data, status: result, profit_loss: pl, close_price: closePrice } as Trade, ...prev]);
           if (notificationsEnabled) {
             setTradeNotification({ visible: true, result, amount, profit: pl, countdown: 5 });
             const cd = setInterval(() => {
@@ -817,18 +1113,27 @@ export default function TradeDashboardPage() {
               });
             }, 1000);
           }
-          if (userId) fetchAlerts(userId);
+          if (currentUserId) fetchAlerts(currentUserId);
         }, duration * 1000);
       }
-    } catch (err) {
-      console.error('Trade error:', err);
+    } catch (err: any) {
+      console.error('[executeTrade] Trade error:', err?.message || err, '| code:', err?.code);
       addToast('error', 'Failed to place trade. Please try again.');
     } finally {
       setIsPlacingTrade(false);
-      setShowConfirm(false);
-      setPendingDirection(null);
     }
-  }, [userId, selectedAsset, amount, tvPrice, duration, accountType, currentBalance, notificationsEnabled, fetchAlerts, addToast]);
+  }, [selectedAsset, amount, tvPrice, duration, accountTypeRef, currentBalanceRef, notificationsEnabled, fetchAlerts, addToast, authSession, user?.id]);
+
+  const handleTrade = useCallback(async (direction: 'buy' | 'sell') => {
+    const currentUserId = userId ?? user?.id ?? null;
+    if (!currentUserId) { addToast('error', 'Please sign in to trade'); return; }
+    if (copyTradeActive) { addToast('warning', 'Copy Trade is active. Stop following to trade manually.'); return; }
+    if (!isEmailVerified && accountType === 'real') { addToast('warning', t('tradePanel.emailVerificationRequired')); return; }
+    if (amount < 1 || amount > 10000) { addToast('error', 'Amount must be between $1 and $10,000'); return; }
+    if (amount > currentBalance) { addToast('error', 'Insufficient balance'); return; }
+    if (tvPrice <= 0) { addToast('error', t('tradePanel.priceUnavailable')); return; }
+    executeTrade(direction);
+  }, [copyTradeActive, isEmailVerified, accountType, amount, currentBalance, tvPrice, t, executeTrade, user?.id]);
 
   const handleResendVerification = useCallback(async () => {
     if (resendCooldown > 0) return;
@@ -895,6 +1200,7 @@ export default function TradeDashboardPage() {
       setShowDepositModal(false);
       setDepositAmount('');
       setDepositStep('amount');
+      setSelectedDepositMethod('');
       const supabaseClient = createClient();
       const { data: { session } } = await supabaseClient.auth.getSession();
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -931,6 +1237,56 @@ export default function TradeDashboardPage() {
     window.location.href = '/auth';
   }, []);
 
+  // ── Account Tab Handlers ──
+  const handleProfileSave = useCallback(async () => {
+    if (!userId) return;
+    setProfileSaving(true);
+    setProfileMsg(null);
+    const { error } = await supabase
+      .from('user_profiles')
+      .update({ full_name: profileFullName.trim(), phone: profilePhone.trim() })
+      .eq('id', userId);
+    setProfileSaving(false);
+    if (error) {
+      setProfileMsg({ type: 'error', text: 'Failed to update profile' });
+    } else {
+      setProfileMsg({ type: 'success', text: 'Profile updated successfully' });
+      setTimeout(() => setProfileMsg(null), 3000);
+    }
+  }, [userId, profileFullName, profilePhone]);
+
+  const handlePasswordChange = useCallback(async () => {
+    setPasswordMismatch(false);
+    setPasswordMsg(null);
+    if (newPassword !== confirmPassword) { setPasswordMismatch(true); return; }
+    if (newPassword.length < 8) { setPasswordMsg({ type: 'error', text: 'Password must be at least 8 characters' }); return; }
+    setPasswordSaving(true);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    setPasswordSaving(false);
+    if (error) {
+      setPasswordMsg({ type: 'error', text: error.message || 'Failed to update password' });
+    } else {
+      setPasswordMsg({ type: 'success', text: 'Password updated successfully' });
+      setNewPassword('');
+      setConfirmPassword('');
+      setTimeout(() => setPasswordMsg(null), 3000);
+    }
+  }, [newPassword, confirmPassword]);
+
+  const fetchTxHistory = useCallback(async () => {
+    if (!userId) return;
+    setTxLoading(true);
+    const [depositsRes, withdrawalsRes] = await Promise.all([
+      supabase.from('deposit_requests').select('id, amount, currency, status, created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(10),
+      supabase.from('withdrawal_requests').select('id, amount, currency, status, created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(10),
+    ]);
+    const deposits: TxItem[] = (depositsRes.data || []).map((d: any) => ({ ...d, type: 'deposit' as const }));
+    const withdrawals: TxItem[] = (withdrawalsRes.data || []).map((w: any) => ({ ...w, type: 'withdrawal' as const }));
+    const combined = [...deposits, ...withdrawals].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 10);
+    setTxHistory(combined);
+    setTxLoading(false);
+  }, [userId]);
+
   // ─────────────────────────────────────────────────────────────────────────────
   // RENDER
   // ─────────────────────────────────────────────────────────────────────────────
@@ -938,155 +1294,57 @@ export default function TradeDashboardPage() {
     <div className="td-dashboard-root">
       <style dangerouslySetInnerHTML={{ __html: DASHBOARD_STYLES }} />
 
-      {/* ── Toast Notifications ── */}
-      <div style={{ position: 'fixed', top: 16, right: 16, zIndex: 9999, display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {toasts.map(toast => (
-          <div key={toast.id} style={{
-            background: toast.type === 'success' ? '#065f46' : toast.type === 'error' ? '#7f1d1d' : toast.type === 'warning' ? '#78350f' : '#1e3a5f',
-            color: '#fff', padding: '10px 16px', borderRadius: 8, fontSize: 13, fontWeight: 500,
-            boxShadow: '0 4px 12px rgba(0,0,0,0.4)', maxWidth: 320,
-            borderLeft: '3px solid ' + (toast.type === 'success' ? '#10b981' : toast.type === 'error' ? '#ef4444' : toast.type === 'warning' ? '#f59e0b' : '#3b82f6'),
-          }}>
-            {toast.message}
+      {/* ── DESKTOP HEADER CONTENT ── */}
+      <div className="td-header-row" style={{ background: '#000000', borderBottom: '1px solid #1a1a1a', padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 52, height: 52, flexShrink: 0, gap: 6 }}>
+
+        {/* ── Logo */}
+        <Link href="/trade" className="td-header-desktop-only" style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, textDecoration: 'none' }}>
+          <img
+            src="/assets/images/LOGO_PANJANG-1773100758034.png"
+            alt="Investoft"
+            style={{ height: 36, width: 'auto', objectFit: 'contain', display: 'block' }}
+          />
+        </Link>
+
+        {/* ── Balance + Account Switcher */}
+        <div className="td-header-desktop-only" style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
+          {/* Segmented Demo/Real switch */}
+          <div style={{ display: 'flex', background: '#27272a', borderRadius: 6, border: '1px solid #3f3f46', overflow: 'hidden', height: 28 }}>
+            <button
+              onClick={() => setAccountType('demo')}
+              style={{ padding: '0 8px', height: 28, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 600, background: accountType === 'demo' ? '#3b82f6' : 'transparent', color: accountType === 'demo' ? '#fff' : '#a1a1aa' }}>Demo</button>
+            <button
+              onClick={() => setAccountType('real')}
+              style={{ padding: '0 8px', height: 28, border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 600, background: accountType === 'real' ? '#3b82f6' : 'transparent', color: accountType === 'real' ? '#fff' : '#a1a1aa' }}>Real</button>
           </div>
-        ))}
-      </div>
-
-      {/* ── Trade Result Notification ── */}
-      {tradeNotification.visible && (
-        <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 9998, textAlign: 'center', pointerEvents: 'none' }}>
-          <div style={{
-            background: tradeNotification.result === 'won' ? 'rgba(16,185,129,0.95)' : 'rgba(239,68,68,0.95)',
-            color: '#fff', padding: '24px 40px', borderRadius: 16, fontSize: 28, fontWeight: 800,
-            boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-          }}>
-            <div>{tradeNotification.result === 'won' ? t('trade.won') : t('trade.lost')}</div>
-            <div style={{ fontSize: 20, marginTop: 4 }}>
-              {tradeNotification.profit >= 0 ? '+' : ''}${Math.abs(tradeNotification.profit).toFixed(2)}
-            </div>
-            <div style={{ fontSize: 13, opacity: 0.8, marginTop: 8 }}>Closing in {tradeNotification.countdown}s</div>
+          {/* Balance text */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginLeft: 4, marginRight: 4 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: '#a1a1aa' }}>Balance:</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>{currency.symbol}{currentBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
           </div>
-        </div>
-      )}
-
-      {/* ── Email Verification Banner ── */}
-      {!isEmailVerified && userId && (
-        <div style={{ background: '#78350f', color: '#fef3c7', padding: '6px 16px', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, flexWrap: 'wrap', flexShrink: 0 }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          <span>{t('emailVerification.banner')}</span>
-          <button onClick={handleResendVerification} disabled={resendCooldown > 0}
-            style={{ background: '#f59e0b', color: '#000', border: 'none', borderRadius: 4, padding: '3px 10px', fontSize: 11, fontWeight: 600, cursor: resendCooldown > 0 ? 'not-allowed' : 'pointer', opacity: resendCooldown > 0 ? 0.6 : 1 }}>
-            {resendCooldown > 0 ? `${resendCooldown}s` : t('emailVerification.resend')}
-          </button>
-        </div>
-      )}
-
-      {/* ── Copy Trade Active Banner ── */}
-      {copyTradeActive && (
-        <div style={{ background: 'rgba(16,185,129,0.15)', borderBottom: '1px solid rgba(16,185,129,0.3)', padding: '6px 16px', fontSize: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, flexWrap: 'wrap', flexShrink: 0 }}>
-          <div style={{ width: 7, height: 7, background: '#10b981', borderRadius: '50%' }} />
-          <span style={{ color: '#10b981', fontWeight: 600 }}>Copy Trade Active — Manual trading is disabled</span>
-          <Link href="/copy-trade" style={{ color: '#3b82f6', fontSize: 11, textDecoration: 'underline' }}>Manage</Link>
-        </div>
-      )}
-
-      {/* ── Top Header ── FIX 1 (balance label), FIX 2 (no top nav tabs), FIX 3 (settings icon), FIX 8 (logo) */}
-      <div className="td-header-row" style={{ background: '#0d1224', borderBottom: '1px solid #1e2a45', padding: '0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 52, height: 52, flexShrink: 0, gap: 4 }}>
-        {/* FIX 8: Logo — consistent gradient mark + bold Investoft text */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-          <div style={{ width: 28, height: 28, background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 800, color: '#fff', flexShrink: 0, letterSpacing: '-0.03em' }}>I</div>
-          <span className="td-logo-text" style={{ fontWeight: 800, fontSize: 15, color: '#fff', letterSpacing: '-0.03em' }}>Investoft</span>
-        </div>
-
-        {/* FIX 2: NO desktop nav tabs in header — removed completely */}
-
-        {/* Right Controls */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-          {/* Demo/Real Toggle */}
-          <div style={{ display: 'flex', background: '#1a2035', borderRadius: 6, padding: 2, gap: 2 }}>
-            <button onClick={() => setAccountType('demo')}
-              style={{ display: 'flex', alignItems: 'center', gap: 5, background: accountType === 'demo' ? '#1e3a5f' : 'transparent', border: accountType === 'demo' ? '1px solid #3b82f6' : '1px solid transparent', borderRadius: 5, padding: '4px 10px', cursor: 'pointer', color: accountType === 'demo' ? '#60a5fa' : '#64748b', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap', transition: 'all 0.15s' }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-              <span>Demo</span>
-            </button>
-            <button onClick={() => setAccountType('real')}
-              style={{ display: 'flex', alignItems: 'center', gap: 5, background: accountType === 'real' ? '#1e3a5f' : 'transparent', border: accountType === 'real' ? '1px solid #10b981' : '1px solid transparent', borderRadius: 5, padding: '4px 10px', cursor: 'pointer', color: accountType === 'real' ? '#10b981' : '#64748b', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap', transition: 'all 0.15s' }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M9 8h4a2 2 0 0 1 0 4H9v4h4a2 2 0 0 0 0-4"/><line x1="9" y1="8" x2="9" y2="12"/></svg>
-              <span>Real</span>
-            </button>
-          </div>
-
-          {/* Currency Selector */}
-          <div style={{ position: 'relative' }}>
-            <button onClick={() => setShowCurrencyPicker(!showCurrencyPicker)}
-              style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#1a2035', border: '1px solid #2d3f5e', borderRadius: 6, padding: '4px 10px', cursor: 'pointer', color: '#e2e8f0', fontSize: 12, fontWeight: 600, whiteSpace: 'nowrap' }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-              <span>{currency.code}</span>
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
-            </button>
-            {showCurrencyPicker && (
-              <div style={{ position: 'absolute', top: '100%', right: 0, background: '#1a2035', border: '1px solid #2d3f5e', borderRadius: 8, zIndex: 100, maxHeight: 200, overflowY: 'auto', marginTop: 4, minWidth: 160 }}>
-                {CURRENCIES.map(c => (
-                  <button key={c.code} onClick={() => { setCurrency(c); setShowCurrencyPicker(false); }}
-                    style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', border: 'none', background: currency.code === c.code ? '#1e3a5f' : 'transparent', cursor: 'pointer' }}>
-                    <div style={{ textAlign: 'left' }}>
-                      <div style={{ fontSize: 12, fontWeight: 600, color: '#fff' }}>{c.code}</div>
-                      <div style={{ fontSize: 10, color: '#64748b' }}>{c.name}</div>
-                    </div>
-                    {currency.code === c.code && <span style={{ color: '#3b82f6', fontSize: 12, marginLeft: 'auto' }}>✓</span>}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* FIX 1: Balance — plain "Balance" label, no translation key */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#1a2035', borderRadius: 6, padding: '4px 10px', border: '1px solid #2d3f5e' }}>
-            <div style={{ textAlign: 'right' }}>
-              <div className="td-header-balance-text" style={{ fontSize: 10, color: '#64748b', fontWeight: 500 }}>Balance</div>
-              <div className="td-header-balance-amount" style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>{currency.symbol}{currentBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-            </div>
-            <button className="td-header-deposit-btn" onClick={() => setShowDepositModal(true)} style={{ background: '#10b981', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>+ Deposit</button>
-          </div>
-
-          {/* Icon Buttons */}
-          <button className="td-header-icon-btn" onClick={() => setShowAlerts(true)} style={{ position: 'relative', background: 'transparent', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
-            {unreadCount > 0 && <span style={{ position: 'absolute', top: 0, right: 0, background: '#ef4444', color: '#fff', fontSize: 9, fontWeight: 700, borderRadius: '50%', width: 14, height: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{unreadCount > 9 ? '9+' : unreadCount}</span>}
-          </button>
-          {/* FIX 3: Clean settings icon — SlidersHorizontal style */}
-          <button className="td-header-icon-btn" onClick={() => setShowSettings(true)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="4" y1="6" x2="20" y2="6"/>
-              <line x1="4" y1="12" x2="20" y2="12"/>
-              <line x1="4" y1="18" x2="20" y2="18"/>
-              <circle cx="8" cy="6" r="2" fill="#0d1117"/>
-              <circle cx="16" cy="12" r="2" fill="#0d1117"/>
-              <circle cx="10" cy="18" r="2" fill="#0d1117"/>
-            </svg>
-          </button>
-          <button className="td-header-icon-btn" onClick={handleSignOut} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1 0-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-          </button>
+          {/* Deposit button — only visible for real account */}
+          <button onClick={() => setShowDepositModal(true)} style={{ marginLeft: 6, background: '#10b981', color: '#fff', border: 'none', borderRadius: 6, padding: '0 8px', height: 28, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Deposit</button>
         </div>
       </div>
 
-      {/* FIX 4: Asset Selector Bar — uses floating dropdown, does NOT replace chart */}
-      <div style={{ background: '#0d1224', borderBottom: '1px solid #1e2a45', padding: '0 12px', display: 'flex', alignItems: 'center', gap: 8, height: 40, overflowX: 'auto', flexShrink: 0, position: 'relative', zIndex: 50 }}>
+      {/* ── Desktop Asset Selector Bar ── */}
+      <div className="td-asset-bar-desktop" style={{ background: '#000000', borderBottom: '1px solid #1a1a1a', padding: '0 12px', display: 'flex', alignItems: 'center', gap: 8, height: 40, overflowX: 'auto', flexShrink: 0, position: 'relative', zIndex: 50 }}>
         {/* Asset dropdown wrapper — floating panel, does not affect layout */}
         <div className="td-asset-selector-wrapper">
           <button onClick={() => setShowAssetPanel(!showAssetPanel)}
-            style={{ display: 'flex', alignItems: 'center', gap: 5, background: '#1a2035', border: '1px solid #2d3f5e', borderRadius: 5, padding: '4px 9px', cursor: 'pointer', color: '#fff', fontSize: 12, fontWeight: 700, whiteSpace: 'nowrap', flexShrink: 0 }}>
-            <CategoryIcon category={selectedAsset.category} size={12} />
-            <span>{selectedAsset.symbol}</span>
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>
+            style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#18181b', border: '1px solid #3f3f46', borderRadius: 6, padding: '3px 6px', cursor: 'pointer' }}
+          >
+            <CategoryIcon category={selectedAsset.category} size={10} />
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#fff' }}>{selectedAsset.symbol}</span>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, alignSelf: 'center', opacity: 0.7 }}>
+<polyline points="6 9 12 15 18 9"/>
+            </svg>
           </button>
 
-          {/* FIX 4: Floating dropdown panel — does NOT replace chart layout */}
           {showAssetPanel && (
             <>
               <div className="td-asset-panel-backdrop" onClick={() => setShowAssetPanel(false)} />
-              <div className="td-asset-panel">
+              <div className="td-asset-panel" style={{ top: 40 }}>
                 <div style={{ padding: '8px 10px', borderBottom: '1px solid #1e2a45', flexShrink: 0 }}>
                   <input type="text" placeholder="Search assets..." value={assetSearch}
                     onChange={e => setAssetSearch(e.target.value)}
@@ -1097,35 +1355,38 @@ export default function TradeDashboardPage() {
                 <div style={{ display: 'flex', borderBottom: '1px solid #1e2a45', flexShrink: 0 }}>
                   {(['all', 'crypto', 'forex', 'commodity', 'stock'] as Array<'all' | 'crypto' | 'forex' | 'commodity' | 'stock'>).map(cat => (
                     <button key={cat} onClick={() => setAssetCategory(cat)}
-                      style={{ flex: 1, padding: '6px 2px', border: 'none', background: 'transparent', cursor: 'pointer', color: assetCategory === cat ? '#3b82f6' : '#64748b', borderBottom: assetCategory === cat ? '2px solid #3b82f6' : '2px solid transparent', fontSize: 9, fontWeight: 600, transition: 'all 0.15s' }}>
+                      style={{ flex: 1, padding: '6px 2px', border: 'none', background: 'transparent', cursor: 'pointer', color: assetCategory === cat ? '#3b82f6' : '#64748b', borderBottom: assetCategory === cat ? '2px solid #3b82f6' : '2px solid transparent', fontSize: 9, fontWeight: 600 }}>
                       {cat === 'all' ? 'ALL' : CATEGORY_LABELS[cat]?.toUpperCase()}
                     </button>
                   ))}
                 </div>
                 <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
                   {filteredAssets.length === 0 && (
-                    <div style={{ padding: '24px 12px', textAlign: 'center', color: '#64748b' }}>
-                      <div style={{ fontSize: 12, fontWeight: 600 }}>No results found</div>
-                    </div>
+                    <div style={{ padding: '16px 0', textAlign: 'center', color: '#71717a', fontSize: 13 }}>No results found</div>
                   )}
                   {filteredAssets.map(asset => {
                     const priceData = prices[asset.symbol];
                     const isSelected = selectedAsset.symbol === asset.symbol;
                     return (
                       <button key={asset.symbol} onClick={() => { setSelectedAsset(asset); setShowAssetPanel(false); }}
-                        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px', border: 'none', background: isSelected ? '#1e2a45' : 'transparent', cursor: 'pointer', borderLeft: isSelected ? '2px solid #3b82f6' : '2px solid transparent', transition: 'all 0.1s' }}>
+                        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 10px', border: 'none', background: isSelected ? '#1e2a45' : 'transparent', cursor: 'pointer', borderLeft: isSelected ? '2px solid #3b82f6' : '2px solid transparent' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
                           <span style={{ color: '#64748b' }}><CategoryIcon category={asset.category} size={12} /></span>
                           <div style={{ textAlign: 'left' }}>
                             <div style={{ fontSize: 12, fontWeight: 600, color: isSelected ? '#60a5fa' : '#e2e8f0' }}>{asset.symbol}</div>
-                            <div style={{ fontSize: 10, color: '#64748b' }}>{asset.name}</div>
+                            <div style={{ fontSize: 11, color: '#64748b' }}>{asset.name}</div>
                           </div>
                         </div>
-                        <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontSize: 11, fontWeight: 600, color: '#e2e8f0', fontVariantNumeric: 'tabular-nums' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1 }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: '#fff', fontVariantNumeric: 'tabular-nums', lineHeight: 1.2 }}>
                             {priceData?.price ? formatPrice(priceData.price, asset.category) : '—'}
-                          </div>
-                          <div style={{ fontSize: 10, color: '#10b981', fontWeight: 700 }}>+{asset.payout}%</div>
+                          </span>
+                          {priceData?.change24h !== undefined && priceData.change24h !== 0 && (
+                            <span style={{ fontSize: 9, fontWeight: 600, color: priceData.change24h >= 0 ? '#10b981' : '#ef4444', lineHeight: 1.2 }}>
+                              {priceData.change24h >= 0 ? '+' : ''}{priceData.change24h.toFixed(2)}%
+                            </span>
+                          )}
+                          <span style={{ fontSize: 9, fontWeight: 700, color: '#10b981', lineHeight: 1.2 }}>+{asset.payout}%</span>
                         </div>
                       </button>
                     );
@@ -1136,23 +1397,135 @@ export default function TradeDashboardPage() {
           )}
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-          <span style={{ fontSize: 15, fontWeight: 700, color: tvPrice > 0 ? '#fff' : '#64748b', fontVariantNumeric: 'tabular-nums' }}>
+        <div style={{ display: 'flex', gap: 6 }}>
+          <span style={{ fontSize: 15, fontWeight: 700, color: tvPrice > 0 ? priceFlashColor : '#64748b', fontVariantNumeric: 'tabular-nums', lineHeight: 1.2 }}>
             {tvPrice > 0 ? formatPrice(tvPrice, selectedAsset.category) : '—'}
           </span>
-          {prices[selectedAsset.symbol] && prices[selectedAsset.symbol].change24h !== 0 && (
-            <span style={{ fontSize: 11, fontWeight: 600, color: prices[selectedAsset.symbol].change24h >= 0 ? '#10b981' : '#ef4444' }}>
-              {prices[selectedAsset.symbol].change24h >= 0 ? '+' : ''}{prices[selectedAsset.symbol].change24h.toFixed(2)}%
-            </span>
-          )}
         </div>
         <div style={{ display: 'flex', gap: 3, overflowX: 'auto', flexShrink: 0 }}>
           {ASSETS.slice(0, 8).map(asset => (
             <button key={asset.symbol} onClick={() => setSelectedAsset(asset)}
-              style={{ background: selectedAsset.symbol === asset.symbol ? '#1e3a5f' : 'transparent', border: '1px solid ' + (selectedAsset.symbol === asset.symbol ? '#3b82f6' : '#1e2a45'), borderRadius: 4, padding: '2px 7px', cursor: 'pointer', color: selectedAsset.symbol === asset.symbol ? '#60a5fa' : '#64748b', fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap' }}>
+              style={{ background: selectedAsset.symbol === asset.symbol ? '#1e2a45' : 'transparent', border: '1px solid ' + (selectedAsset.symbol === asset.symbol ? '#3b82f6' : '#1e2a45'), borderRadius: 4, padding: '2px 7px', cursor: 'pointer', color: selectedAsset.symbol === asset.symbol ? '#60a5fa' : '#64748b', fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap' }}>
               {asset.symbol}
             </button>
           ))}
+        </div>
+      </div>
+
+      {/* ── Mobile Asset Row ── */}
+      <div className="td-asset-bar-mobile" style={{ display: 'none', background: '#000000', borderBottom: '1px solid #1a1a1a', padding: '0 12px', alignItems: 'center', justifyContent: 'space-between', height: 44, flexShrink: 0, position: 'relative', zIndex: 50 }}>
+        {/* Left: flag + pair name + payout + chevron */}
+        <div className="td-asset-selector-wrapper" style={{ display: 'flex', alignItems: 'center' }}>
+          <button
+            onClick={() => setShowAssetPanel(!showAssetPanel)}
+            style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#18181b', border: '1px solid #3f3f46', borderRadius: 6, padding: '3px 6px', cursor: 'pointer' }}
+          >
+            {/* Colored circle as flag indicator */}
+            <div style={{
+              width: 18, height: 18, borderRadius: '50%', flexShrink: 0,
+              background: selectedAsset.category === 'crypto' ? '#f59e0b' : selectedAsset.category === 'forex' ? '#3b82f6' : selectedAsset.category === 'commodity' ? '#10b981' : '#8b5cf6',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <CategoryIcon category={selectedAsset.category} size={10} />
+            </div>
+            <span style={{ fontSize: 11, fontWeight: 700, color: '#fff' }}>{selectedAsset.symbol}</span>
+            <span style={{ fontSize: 11, fontWeight: 800, color: '#3b82f6' }}>95%</span>
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0, alignSelf: 'center', opacity: 0.7 }}>
+<polyline points="6 9 12 15 18 9"/>
+            </svg>
+          </button>
+
+          {/* Asset panel dropdown */}
+          {showAssetPanel && (
+            <>
+              <div className="td-asset-panel-backdrop" onClick={() => setShowAssetPanel(false)} />
+              <div className="td-asset-panel" style={{ top: 44 }}>
+                <div style={{ padding: '8px 10px', borderBottom: '1px solid #1e2a45', flexShrink: 0 }}>
+                  <input type="text" placeholder="Search assets..." value={assetSearch}
+                    onChange={e => setAssetSearch(e.target.value)}
+                    autoFocus
+                    style={{ width: '100%', background: '#1a2035', border: '1px solid #2d3f5e', borderRadius: 6, padding: '5px 10px', color: '#fff', fontSize: 12, outline: 'none', boxSizing: 'border-box' }}
+                  />
+                </div>
+                <div style={{ display: 'flex', borderBottom: '1px solid #1e2a45', flexShrink: 0 }}>
+                  {(['all', 'crypto', 'forex', 'commodity', 'stock'] as Array<'all' | 'crypto' | 'forex' | 'commodity' | 'stock'>).map(cat => (
+                    <button key={cat} onClick={() => setAssetCategory(cat)}
+                      style={{ flex: 1, padding: '6px 2px', border: 'none', background: 'transparent', cursor: 'pointer', color: assetCategory === cat ? '#3b82f6' : '#64748b', borderBottom: assetCategory === cat ? '2px solid #3b82f6' : '2px solid transparent', fontSize: 9, fontWeight: 600 }}>
+                      {cat === 'all' ? 'ALL' : CATEGORY_LABELS[cat]?.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
+                  {filteredAssets.map(asset => {
+                    const isSelected = selectedAsset.symbol === asset.symbol;
+                    return (
+                      <button key={asset.symbol} onClick={() => { setSelectedAsset(asset); setShowAssetPanel(false); }}
+                        style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', border: 'none', background: isSelected ? '#1e2a45' : 'transparent', cursor: 'pointer', borderLeft: isSelected ? '2px solid #3b82f6' : '2px solid transparent' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <div style={{ width: 30, height: 30, borderRadius: '50%', background: asset.category === 'crypto' ? '#f59e0b' : asset.category === 'forex' ? '#3b82f6' : asset.category === 'commodity' ? '#10b981' : '#8b5cf6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: '#fff' }} />
+                          <div>
+                            <div style={{ fontSize: 13, fontWeight: 700, color: isSelected ? '#60a5fa' : '#e2e8f0' }}>{asset.symbol}</div>
+                            <div style={{ fontSize: 11, color: '#64748b' }}>{asset.name}</div>
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 1 }}>
+                          <span style={{ fontSize: 11, fontWeight: 700, color: '#fff', fontVariantNumeric: 'tabular-nums', lineHeight: 1.2 }}>
+                            {prices[asset.symbol]?.price ? formatPrice(prices[asset.symbol].price, asset.category) : '—'}
+                          </span>
+                          {prices[asset.symbol]?.change24h !== undefined && prices[asset.symbol].change24h !== 0 && (
+                            <span style={{ fontSize: 9, fontWeight: 600, color: prices[asset.symbol].change24h >= 0 ? '#10b981' : '#ef4444', lineHeight: 1.2 }}>
+                              {prices[asset.symbol].change24h >= 0 ? '+' : ''}{prices[asset.symbol].change24h.toFixed(2)}%
+                            </span>
+                          )}
+                          <span style={{ fontSize: 9, fontWeight: 700, color: '#10b981', lineHeight: 1.2 }}>+{asset.payout}%</span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Right: tool icons + duration pill */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {/* Current Price */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginRight: 4 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: tvPrice > 0 ? priceFlashColor : '#64748b', fontVariantNumeric: 'tabular-nums', lineHeight: 1.2 }}>
+              {tvPrice > 0 ? formatPrice(tvPrice, selectedAsset.category) : '—'}
+            </span>
+          </div>
+          {/* Demo/Real segmented switch + Deposit button */}
+          <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+            <button
+              onClick={() => setShowAccountDropdown(!showAccountDropdown)}
+              style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#27272a', border: '1px solid #3f3f46', borderRadius: 6, padding: '0 8px', height: 28, cursor: 'pointer', color: '#fff', fontSize: 11, fontWeight: 600, minWidth: 130, maxWidth: 130, overflow: 'hidden', justifyContent: 'space-between' }}
+            >
+              {accountType === 'demo' ? 'Demo' : 'Real'}
+              <span style={{ color: '#a1a1aa', fontWeight: 400 }}>&nbsp;{currency.symbol}{currentBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none" style={{ marginLeft: 2 }}><path d="M2 3.5L5 6.5L8 3.5" stroke="#a1a1aa" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            </button>
+            {showAccountDropdown && (
+              <div style={{ position: 'absolute', top: 32, right: 0, background: '#18181b', border: '1px solid #3f3f46', borderRadius: 8, zIndex: 100, minWidth: 160, overflow: 'hidden' }}>
+                <div
+                  onClick={() => { setAccountType('demo'); setShowAccountDropdown(false); }}
+                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', cursor: 'pointer', background: accountType === 'demo' ? '#1d4ed8' : 'transparent', color: '#fff', fontSize: 12 }}
+                >
+                  <span>Demo</span>
+                  <span>{currency.symbol}{demoBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </div>
+                <div
+                  onClick={() => { setAccountType('real'); setShowAccountDropdown(false); }}
+                  style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 14px', cursor: 'pointer', background: accountType === 'real' ? '#1d4ed8' : 'transparent', color: '#fff', fontSize: 12 }}
+                >
+                  <span>Real</span>
+                  <span>{currency.symbol}{realBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </div>
+              </div>
+            )}
+            <button onClick={() => setShowDepositModal(true)} style={{ marginLeft: 6, background: '#10b981', color: '#fff', border: 'none', borderRadius: 6, padding: '0 8px', height: 28, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Deposit</button>
+          </div>
         </div>
       </div>
 
@@ -1213,16 +1586,23 @@ export default function TradeDashboardPage() {
               {tradeHistory.length === 0 ? (
                 <div style={{ textAlign: 'center', color: '#475569', fontSize: 13, padding: '40px 0' }}>No trade history yet</div>
               ) : tradeHistory.slice(0, 50).map(trade => (
-                <div key={trade.id} style={{ background: '#0d1224', border: '1px solid #1e2a45', borderRadius: 8, padding: '10px 14px', marginBottom: 8, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: '#e2e8f0' }}>{trade.asset_symbol}</div>
-                    <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>{trade.direction.toUpperCase()} · {formatDuration(trade.duration_seconds)} · {new Date(trade.opened_at).toLocaleString()}</div>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: trade.status === 'won' ? '#10b981' : '#ef4444' }}>
+                <div key={trade.id} style={{ padding: '12px 20px', borderBottom: '1px solid #0f172a', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: '#e2e8f0' }}>{trade.asset_symbol}</span>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: trade.direction === 'buy' ? '#10b981' : '#ef4444', background: trade.direction === 'buy' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)', padding: '1px 6px', borderRadius: 4 }}>{trade.direction.toUpperCase()}</span>
+                      <span style={{ fontSize: 11, color: '#64748b', fontWeight: 700, background: trade.status === 'won' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)', padding: '1px 6px', borderRadius: 4 }}>{trade.status.toUpperCase()}</span>
+                    </div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: trade.profit_loss >= 0 ? '#10b981' : '#ef4444' }}>
                       {trade.profit_loss >= 0 ? '+' : ''}{currency.symbol}{Math.abs(trade.profit_loss).toFixed(2)}
                     </div>
-                    <div style={{ fontSize: 11, color: trade.status === 'won' ? '#10b981' : '#ef4444', marginTop: 2 }}>{trade.status.toUpperCase()}</div>
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 16px' }}>
+                    <span style={{ fontSize: 11, color: '#64748b' }}>Amount: <span style={{ color: '#94a3b8' }}>{currency.symbol}{trade.amount.toFixed(2)}</span></span>
+                    <span style={{ fontSize: 11, color: '#64748b' }}>Duration: <span style={{ color: '#94a3b8' }}>{trade.duration_seconds}</span></span>
+                    <span style={{ fontSize: 11, color: '#64748b' }}>Entry: <span style={{ color: '#94a3b8' }}>{trade.entry_price}</span></span>
+                    <span style={{ fontSize: 11, color: '#64748b' }}>Close: <span style={{ color: '#94a3b8' }}>{trade.close_price}</span></span>
+                    <span style={{ fontSize: 11, color: '#64748b' }}>{new Date(trade.opened_at).toLocaleString()}</span>
                   </div>
                 </div>
               ))}
@@ -1232,75 +1612,245 @@ export default function TradeDashboardPage() {
 
         {/* ── Account Tab ── */}
         {activeTab === 'account' && (
-          <div style={{ flex: 1, overflowY: 'auto', padding: '20px 16px', background: '#0a0e1a' }}>
-            <div style={{ maxWidth: 480, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div style={{ background: '#0d1224', border: '1px solid #1e2a45', borderRadius: 12, padding: 20 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
-                  <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 800, color: '#fff', flexShrink: 0 }}>
-                    {userEmail ? userEmail[0].toUpperCase() : '?'}
+          <div style={{ flex: 1, overflowY: 'auto', paddingBottom: 80, background: 'transparent' }}>
+            <div style={{ maxWidth: 480, margin: '0 auto', padding: '20px 16px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+
+              {/* 1) PROFILE SECTION */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, fontWeight: 800, color: '#fff', flexShrink: 0 }}>
+                  {(profileFullName ? profileFullName[0] : userEmail ? userEmail[0] : '?').toUpperCase()}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: '#fff', marginBottom: 4 }}>
+                    {profileFullName ? profileFullName : 'User_' + (userEmail ? userEmail.split('@')[0] : 'Unknown')}
                   </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{userEmail || 'Loading...'}</div>
-                    <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>Member Account</div>
+                  <span style={{ background: '#3f3f46', color: '#a1a1aa', fontSize: 11, padding: '2px 8px', borderRadius: 999, display: 'inline-block' }}>
+                    ID: {userId ? userId.slice(0, 8) : '--------'}
+                  </span>
+                </div>
+              </div>
+
+              {/* 2) ACTIVATION CARD */}
+              <div style={{ background: '#18181b', borderRadius: 12, padding: 16, position: 'relative', overflow: 'hidden' }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 11, color: '#a1a1aa', marginBottom: 6 }}>Account Activation</div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: '#fff', marginBottom: 12 }}>Top up your account</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{ width: '66.6%', height: 6, background: '#3f3f46', borderRadius: 3, overflow: 'hidden' }}>
+                        <div style={{ width: '66.6%', height: '100%', background: 'linear-gradient(90deg, #3b82f6, #60a5fa)', borderRadius: 3 }} />
+                      </div>
+                      <span style={{ fontSize: 13, color: '#a1a1aa', flexShrink: 0 }}>2/3</span>
+                    </div>
+                  </div>
+                  <div style={{ marginLeft: 16, flexShrink: 0 }}>
+                    <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+                      <path d="M12 3H8L2 7h20l-6 4z"/>
+                      <line x1="12" y1="8" x2="12" y2="16"/>
+                      <line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
                   </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: isEmailVerified ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)', border: '1px solid ' + (isEmailVerified ? 'rgba(16,185,129,0.3)' : 'rgba(245,158,11,0.3)'), borderRadius: 8, padding: '8px 12px' }}>
-                  {isEmailVerified
-                    ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
-                    : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                  }
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 12, fontWeight: 600, color: isEmailVerified ? '#10b981' : '#f59e0b' }}>{isEmailVerified ? 'Email Verified' : 'Email Not Verified'}</div>
-                    <div style={{ fontSize: 11, color: '#64748b' }}>{userEmail}</div>
-                  </div>
-                  {!isEmailVerified && (
-                    <button onClick={handleResendVerification} disabled={resendCooldown > 0}
-                      style={{ background: '#f59e0b', color: '#000', border: 'none', borderRadius: 4, padding: '4px 10px', fontSize: 11, fontWeight: 600, cursor: resendCooldown > 0 ? 'not-allowed' : 'pointer', opacity: resendCooldown > 0 ? 0.6 : 1, whiteSpace: 'nowrap' }}>
-                      {resendCooldown > 0 ? `${resendCooldown}s` : 'Verify'}
-                    </button>
+              </div>
+
+              {/* 3) BALANCE ROW */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #27272a' }}>
+                <span style={{ fontSize: 14, color: '#a1a1aa' }}>Balance</span>
+                <span style={{ fontSize: 15, fontWeight: 700, color: '#fff' }}>
+                  {currency.symbol}{(accountType === 'real' ? realBalance : demoBalance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+
+              {/* 4) MENU ROWS */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+
+                {/* Deposit */}
+                <div>
+                  <button onClick={() => setShowDepositModal(true)}
+                    style={{ width: '100%', background: '#18181b', borderRadius: 12, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, border: 'none', cursor: 'pointer', textAlign: 'left' }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                    <span style={{ flex: 1, fontSize: 14, color: '#fff', fontWeight: 500 }}>Deposit</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#71717a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                  </button>
+                </div>
+
+                {/* Withdraw */}
+                <div>
+                  <button onClick={() => setShowWithdrawModal(true)}
+                    style={{ width: '100%', background: '#18181b', borderRadius: 12, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, border: 'none', cursor: 'pointer', textAlign: 'left' }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                    <span style={{ flex: 1, fontSize: 14, color: '#fff', fontWeight: 500 }}>Withdraw</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#71717a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+
+                {/* Transaction History */}
+                <div>
+                  <button onClick={() => setAccExpandedSection(accExpandedSection === 'history' ? null : 'history')}
+                    style={{ width: '100%', background: '#18181b', borderRadius: accExpandedSection === 'history' ? '12px 12px 0 0' : 12, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, border: 'none', cursor: 'pointer', textAlign: 'left' }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                    <span style={{ flex: 1, fontSize: 14, color: '#fff', fontWeight: 500 }}>Transaction History</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#71717a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points={accExpandedSection === 'history' ? '18 15 12 9 6 15' : '6 9 12 15 18 9'}/></svg>
+                  </button>
+                  {accExpandedSection === 'history' && (
+                    <div style={{ background: '#18181b', borderRadius: '0 0 12px 12px', padding: '0 16px 14px', borderTop: '1px solid #27272a' }}>
+                      {txLoading ? (
+                        <div style={{ padding: '16px 0', textAlign: 'center', color: '#71717a', fontSize: 13 }}>Loading...</div>
+                      ) : txHistory.length === 0 ? (
+                        <div style={{ padding: '16px 0', textAlign: 'center', color: '#71717a', fontSize: 13 }}>No transactions yet</div>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, paddingTop: 12 }}>
+                          {txHistory.map(tx => {
+                            const isDeposit = tx.type === 'deposit';
+                            const statusColor = tx.status === 'approved' ? '#10b981' : tx.status === 'rejected' ? '#ef4444' : '#f59e0b';
+                            return (
+                              <div key={tx.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: '#09090b', borderRadius: 8 }}>
+                                <div style={{ width: 30, height: 30, borderRadius: '50%', background: isDeposit ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 700, color: statusColor, flexShrink: 0 }}>
+                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={isDeposit ? '#10b981' : '#ef4444'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    {isDeposit ? <><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></> : <><line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 18 12"/></>}
+                                  </svg>
+                                </div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ fontSize: 13, fontWeight: 600, color: '#e4e4e7', textTransform: 'capitalize' }}>{tx.type}</div>
+                                  <div style={{ fontSize: 11, color: '#71717a', marginTop: 1 }}>{new Date(tx.created_at).toLocaleDateString()}</div>
+                                </div>
+                                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                                  <div style={{ fontSize: 13, fontWeight: 700, color: isDeposit ? '#10b981' : '#ef4444' }}>{isDeposit ? '+' : '-'}{tx.currency} {Number(tx.amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                                  <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 6px', borderRadius: 4, background: tx.status === 'approved' ? 'rgba(16,185,129,0.15)' : tx.status === 'rejected' ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.15)', color: statusColor, textTransform: 'capitalize' }}>{tx.status}</span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
-              </div>
-              <div style={{ background: '#0d1224', border: '1px solid #1e2a45', borderRadius: 12, padding: 20 }}>
-                <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Account Balance</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                  <div style={{ background: '#1a2035', borderRadius: 8, padding: '12px 14px' }}>
-                    <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>Demo Balance</div>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: '#3b82f6' }}>{currency.symbol}{demoBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                    <div style={{ fontSize: 10, color: '#475569', marginTop: 2 }}>Practice account</div>
-                  </div>
-                  <div style={{ background: '#1a2035', borderRadius: 8, padding: '12px 14px' }}>
-                    <div style={{ fontSize: 11, color: '#64748b', marginBottom: 4 }}>Real Balance</div>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: '#10b981' }}>{currency.symbol}{realBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-                    <div style={{ fontSize: 10, color: '#475569', marginTop: 2 }}>Live account</div>
-                  </div>
+
+                {/* Profile */}
+                <div>
+                  <button onClick={() => setAccExpandedSection(accExpandedSection === 'profile' ? null : 'profile')}
+                    style={{ width: '100%', background: '#18181b', borderRadius: accExpandedSection === 'profile' ? '12px 12px 0 0' : 12, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, border: 'none', cursor: 'pointer', textAlign: 'left' }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4h-8a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 1 0-7.75"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                    <span style={{ flex: 1, fontSize: 14, color: '#fff', fontWeight: 500 }}>Profile</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#71717a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points={accExpandedSection === 'profile' ? '18 15 12 9 6 15' : '6 9 12 15 18 9'}/></svg>
+                  </button>
+                  {accExpandedSection === 'profile' && (
+                    <div style={{ background: '#18181b', borderRadius: '0 0 12px 12px', padding: '12px 16px 14px', borderTop: '1px solid #27272a', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <input type="text" placeholder="Full Name" value={profileFullName}
+                        onChange={e => setProfileFullName(e.target.value)}
+                        style={{ width: '100%', background: '#09090b', border: '1px solid #3f3f46', borderRadius: 8, padding: '10px 12px', color: '#fff', fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
+                      />
+                      <input type="tel" placeholder="Phone Number" value={profilePhone}
+                        onChange={e => setProfilePhone(e.target.value)}
+                        style={{ width: '100%', background: '#09090b', border: '1px solid #3f3f46', borderRadius: 8, padding: '10px 12px', color: '#fff', fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
+                      />
+                      <button onClick={handleProfileSave} disabled={profileSaving}
+                        style={{ width: '100%', padding: '10px', background: '#3b82f6', border: 'none', borderRadius: 8, color: '#fff', fontSize: 13, fontWeight: 700, cursor: profileSaving ? 'not-allowed' : 'pointer', opacity: profileSaving ? 0.7 : 1 }}>
+                        {profileSaving ? 'Saving...' : 'Save Changes'}
+                      </button>
+                      {profileMsg && (
+                        <div style={{ fontSize: 11, color: profileMsg.type === 'success' ? '#10b981' : '#ef4444', textAlign: 'center' }}>{profileMsg.text}</div>
+                      )}
+                    </div>
+                  )}
                 </div>
-                <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-                  <button onClick={() => setShowDepositModal(true)} style={{ flex: 1, padding: '9px', background: 'linear-gradient(135deg, #3b82f6, #2563eb)', border: 'none', borderRadius: 8, color: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>+ Deposit</button>
-                  <button onClick={() => setShowWithdrawModal(true)} style={{ flex: 1, padding: '9px', background: '#1a2035', border: '1px solid #2d3f5e', borderRadius: 8, color: '#94a3b8', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Withdraw</button>
+
+                {/* Change Password */}
+                <div>
+                  <button onClick={() => setAccExpandedSection(accExpandedSection === 'password' ? null : 'password')}
+                    style={{ width: '100%', background: '#18181b', borderRadius: accExpandedSection === 'password' ? '12px 12px 0 0' : 12, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, border: 'none', cursor: 'pointer', textAlign: 'left' }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                    <span style={{ flex: 1, fontSize: 14, color: '#fff', fontWeight: 500 }}>Change Password</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#71717a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points={accExpandedSection === 'password' ? '18 15 12 9 6 15' : '6 9 12 15 18 9'}/></svg>
+                  </button>
+                  {accExpandedSection === 'password' && (
+                    <div style={{ background: '#18181b', borderRadius: '0 0 12px 12px', padding: '12px 16px 14px', borderTop: '1px solid #27272a', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      <input type="password" placeholder="New Password" value={newPassword}
+                        onChange={e => setNewPassword(e.target.value)}
+                        style={{ width: '100%', background: '#09090b', border: '1px solid ' + (passwordMismatch ? '#ef4444' : '#3f3f46'), borderRadius: 8, padding: '10px 12px', color: '#fff', fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
+                      />
+                      <input type="password" placeholder="Confirm Password" value={confirmPassword}
+                        onChange={e => setConfirmPassword(e.target.value)}
+                        style={{ width: '100%', background: '#09090b', border: '1px solid ' + (passwordMismatch ? '#ef4444' : '#3f3f46'), borderRadius: 8, padding: '10px 12px', color: '#fff', fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
+                      />
+                      {passwordMismatch && (
+                        <div style={{ fontSize: 11, color: '#ef4444', textAlign: 'center' }}>Passwords do not match</div>
+                      )}
+                      <button onClick={handlePasswordChange} disabled={passwordSaving || passwordMismatch}
+                        style={{ width: '100%', padding: '10px', background: '#3b82f6', border: 'none', borderRadius: 8, color: '#fff', fontSize: 13, fontWeight: 700, cursor: passwordSaving || passwordMismatch ? 'not-allowed' : 'pointer', opacity: passwordSaving || passwordMismatch ? 0.6 : 1 }}>
+                        {passwordSaving ? 'Changing...' : 'Change Password'}
+                      </button>
+                      {passwordMsg && (
+                        <div style={{ fontSize: 11, color: passwordMsg.type === 'success' ? '#10b981' : '#ef4444', textAlign: 'center' }}>{passwordMsg.text}</div>
+                      )}
+                    </div>
+                  )}
                 </div>
-              </div>
-              <div style={{ background: '#0d1224', border: '1px solid #1e2a45', borderRadius: 12, padding: 20 }}>
-                <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Account Type</div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: accountType === 'demo' ? '#3b82f6' : '#10b981' }} />
-                    <span style={{ fontSize: 13, color: accountType === 'demo' ? '#3b82f6' : '#10b981', fontWeight: 600 }}>{accountType === 'demo' ? 'Demo' : 'Real'}</span>
-                  </div>
-                  <button onClick={() => setActiveTab('copytrade')} style={{ background: '#1a2035', border: '1px solid #2d3f5e', borderRadius: 6, padding: '6px 12px', color: '#94a3b8', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Manage</button>
+
+                {/* Copy Trade */}
+                <div>
+                  <button onClick={() => setActiveTab('copytrade')}
+                    style={{ width: '100%', background: '#18181b', borderRadius: 12, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, border: 'none', cursor: 'pointer', textAlign: 'left' }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M17 21v-2a4 4 0 0 0-4-4h-8a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 1 0-7.75"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </svg>
+                    <span style={{ flex: 1, fontSize: 14, color: '#fff', fontWeight: 500 }}>Copy Trade</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#71717a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+                  </button>
                 </div>
-              </div>
-              <div style={{ background: '#0d1224', border: '1px solid #1e2a45', borderRadius: 12, padding: 20 }}>
-                <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Copy Trade</div>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: copyTradeActive ? '#10b981' : '#475569' }} />
-                    <span style={{ fontSize: 13, color: copyTradeActive ? '#10b981' : '#94a3b8', fontWeight: 600 }}>{copyTradeActive ? 'Active' : 'Inactive'}</span>
-                  </div>
-                  <button onClick={() => setActiveTab('copytrade')} style={{ background: '#1a2035', border: '1px solid #2d3f5e', borderRadius: 6, padding: '6px 12px', color: '#94a3b8', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>Manage</button>
+
+                {/* About Investoft */}
+                <div>
+                  <button onClick={() => setAccExpandedSection(accExpandedSection === 'about' ? null : 'about')}
+                    style={{ width: '100%', background: '#18181b', borderRadius: accExpandedSection === 'about' ? '12px 12px 0 0' : 12, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, border: 'none', cursor: 'pointer', textAlign: 'left' }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/>
+                    </svg>
+                    <span style={{ flex: 1, fontSize: 14, color: '#fff', fontWeight: 500 }}>About Investoft</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#71717a" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points={accExpandedSection === 'about' ? '18 15 12 9 6 15' : '6 9 12 15 18 9'}/></svg>
+                  </button>
+                  {accExpandedSection === 'about' && (
+                    <div style={{ background: '#18181b', borderRadius: '0 0 12px 12px', padding: '14px 16px', borderTop: '1px solid #27272a' }}>
+                      <div style={{ fontSize: 13, color: '#a1a1aa', lineHeight: 1.6 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: '#fff', marginBottom: 8 }}>Investoft Trading Platform</div>
+                        Investoft is a professional binary options and copy trading platform designed for modern traders. Trade global assets including forex, crypto, commodities, and stocks with real-time market data and advanced analytics.
+                        <div style={{ marginTop: 10, fontSize: 12, color: '#71717a' }}>Version 1.0.0 · © 2025 Investoft</div>
+                      </div>
+                    </div>
+                  )}
                 </div>
+
               </div>
-              <button onClick={handleSignOut} style={{ width: '100%', padding: '11px', background: '#7f1d1d', border: 'none', borderRadius: 8, color: '#fca5a5', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Sign Out</button>
+
+              {/* 5) SIGN OUT ROW */}
+              <div style={{ marginTop: 4 }}>
+                <button onClick={handleSignOut}
+                  style={{ width: '100%', background: '#18181b', borderRadius: 12, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 12, border: 'none', cursor: 'pointer', textAlign: 'left' }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f97316" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 21H5a2 2 0 0 1 0-2h18a2 2 0 0 0 0 4"/>
+                    <polyline points="16 7 22 7 22 13"/>
+                    <line x1="12" y1="8" x2="12" y2="16"/>
+                    <line x1="12" y1="16" x2="12.01" y2="16"/>
+                  </svg>
+                  <span style={{ flex: 1, fontSize: 14, color: '#f87171', fontWeight: 500 }}>Sign Out</span>
+                </button>
+              </div>
+
             </div>
           </div>
         )}
@@ -1328,13 +1878,17 @@ export default function TradeDashboardPage() {
               {alerts.length === 0 ? (
                 <div style={{ padding: 24, textAlign: 'center', color: '#475569', fontSize: 13 }}>{t('notifications.noNotifications')}</div>
               ) : alerts.map(alert => (
-                <div key={alert.id} style={{ padding: '12px 20px', borderBottom: '1px solid #0f172a', background: alert.read ? 'transparent' : 'rgba(59,130,246,0.05)', borderLeft: alert.read ? 'none' : '3px solid #3b82f6' }}>
+                <div key={alert.id} style={{ padding: '12px 20px', borderBottom: '1px solid #0f172a', background: alert.read ? 'transparent' : 'rgba(59,130,246,0.05)', borderLeft: '3px solid #3b82f6' }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
                     <div style={{ flexShrink: 0, marginTop: 1 }}>
-                      {alert.type === 'success' && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>}
-                      {alert.type === 'error' && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>}
-                      {alert.type === 'warning' && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>}
-                      {alert.type === 'info' && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>}
+                      {alert.type === 'success' && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2"><polyline points="20 6 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>
+                        </svg>}
+                      {alert.type === 'error' && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                        </svg>}
+                      {alert.type === 'warning' && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="12" x2="12.01" y2="16"/>
+                        </svg>}
+                      {alert.type === 'info' && <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+                        </svg>}
                     </div>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 13, color: '#e2e8f0', lineHeight: 1.4 }}>{alert.message}</div>
@@ -1348,151 +1902,73 @@ export default function TradeDashboardPage() {
         </ModalOverlay>
       )}
 
-      {/* FIX 5: Settings Modal — compact, max-width 400px, professional */}
-      {showSettings && (
-        <ModalOverlay onClose={() => setShowSettings(false)}>
-          <div style={{ background: '#0d1117', border: '1px solid #1e2a45', borderRadius: 12, width: 380, maxWidth: '92vw', overflow: 'hidden' }}>
-            <div style={{ padding: '14px 18px', borderBottom: '1px solid #1e2a45', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="4" y1="6" x2="20" y2="6"/>
-                  <line x1="4" y1="12" x2="20" y2="12"/>
-                  <line x1="4" y1="18" x2="20" y2="18"/>
-                  <circle cx="8" cy="6" r="2" fill="#0d1117"/>
-                  <circle cx="16" cy="12" r="2" fill="#0d1117"/>
-                  <circle cx="10" cy="18" r="2" fill="#0d1117"/>
-                </svg>
-                <span style={{ fontSize: 14, fontWeight: 700, color: '#e2e8f0' }}>Settings</span>
-              </div>
-              <button onClick={() => setShowSettings(false)} style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', padding: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 4 }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-              </button>
-            </div>
-            <div style={{ padding: '14px 18px', display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {/* Currency */}
-              <div>
-                <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Currency</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 5 }}>
-                  {CURRENCIES.map(c => (
-                    <button key={c.code} onClick={() => { setCurrency(c); }}
-                      style={{ padding: '5px 4px', borderRadius: 6, border: '1px solid ' + (currency.code === c.code ? '#3b82f6' : '#1e2a45'), cursor: 'pointer', fontSize: 11, fontWeight: 600, background: currency.code === c.code ? 'rgba(59,130,246,0.15)' : '#111827', color: currency.code === c.code ? '#60a5fa' : '#64748b', textAlign: 'center' }}>
-                      {c.code}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              {/* Divider */}
-              <div style={{ height: 1, background: '#1e2a45' }} />
-              {/* Auto Confirm */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                <div>
-                  <div style={{ fontSize: 13, color: '#e2e8f0', fontWeight: 600 }}>Auto Confirm Trades</div>
-                  <div style={{ fontSize: 11, color: '#475569', marginTop: 2 }}>Skip confirmation dialog</div>
-                </div>
-                <button onClick={() => setAutoConfirm(!autoConfirm)}
-                  style={{ width: 40, height: 22, borderRadius: 11, border: 'none', cursor: 'pointer', background: autoConfirm ? '#3b82f6' : '#1e2a45', position: 'relative', transition: 'background 0.2s', flexShrink: 0 }}>
-                  <div style={{ width: 16, height: 16, borderRadius: '50%', background: '#fff', position: 'absolute', top: 3, left: autoConfirm ? 21 : 3, transition: 'left 0.2s' }} />
-                </button>
-              </div>
-              {/* Trade Notifications */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                <div>
-                  <div style={{ fontSize: 13, color: '#e2e8f0', fontWeight: 600 }}>Trade Notifications</div>
-                  <div style={{ fontSize: 11, color: '#475569', marginTop: 2 }}>Show result popups</div>
-                </div>
-                <button onClick={() => setNotificationsEnabled(!notificationsEnabled)}
-                  style={{ width: 40, height: 22, borderRadius: 11, border: 'none', cursor: 'pointer', background: notificationsEnabled ? '#3b82f6' : '#1e2a45', position: 'relative', transition: 'background 0.2s', flexShrink: 0 }}>
-                  <div style={{ width: 16, height: 16, borderRadius: '50%', background: '#fff', position: 'absolute', top: 3, left: notificationsEnabled ? 21 : 3, transition: 'left 0.2s' }} />
-                </button>
-              </div>
-            </div>
-          </div>
-        </ModalOverlay>
-      )}
-
-      {/* ── Deposit Modal ── */}
-      {showDepositModal && (
-        <ModalOverlay onClose={() => { setShowDepositModal(false); setDepositStep('amount'); }}>
-          <div style={{ background: '#0d1224', border: '1px solid #2d3f5e', borderRadius: 12, padding: 0, width: 400, maxWidth: '95vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
-            <div style={{ padding: '16px 20px', borderBottom: '1px solid #1e2a45', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#fff' }}>Deposit Funds</h3>
-              <button onClick={() => { setShowDepositModal(false); setDepositStep('amount'); }} style={{ background: 'transparent', border: 'none', color: '#64748b', cursor: 'pointer', fontSize: 18, lineHeight: 1 }}>✕</button>
-            </div>
-            <div style={{ padding: '16px 20px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div style={{ marginBottom: 16 }}>
-                <label style={{ fontSize: 12, color: '#64748b', fontWeight: 600, display: 'block', marginBottom: 6 }}>Currency</label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                  {CURRENCIES.map(c => (
-                    <button key={c.code} onClick={() => setDepositCurrency(c)}
-                      style={{ flex: '1 1 auto', padding: '6px 10px', borderRadius: 8, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, background: depositCurrency.code === c.code ? '#3b82f6' : '#1a2035', color: depositCurrency.code === c.code ? '#fff' : '#94a3b8' }}>
-                      {c.code}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div style={{ marginBottom: 16 }}>
-                <label style={{ fontSize: 12, color: '#64748b', fontWeight: 600, display: 'block', marginBottom: 6 }}>Amount ({depositCurrency.code})</label>
-                <input type="number" value={depositAmount} onChange={e => setDepositAmount(e.target.value)}
-                  placeholder={`Min. ${depositCurrency.symbol}${CURRENCY_MIN_DEPOSITS[depositCurrency.code] || 100}`}
-                  style={{ width: '100%', background: '#1a2035', border: '1px solid #2d3f5e', borderRadius: 8, padding: '10px 12px', color: '#fff', fontSize: 14, outline: 'none', boxSizing: 'border-box' }}
-                />
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
-                {(CURRENCY_QUICK_AMOUNTS[depositCurrency.code] || [100, 250, 500, 1000]).map(amt => (
-                  <button key={amt} onClick={() => setDepositAmount(amt.toString())}
-                    style={{ flex: '1 1 auto', padding: '8px', background: '#1a2035', border: '1px solid #2d3f5e', borderRadius: 6, color: '#94a3b8', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
-                    {depositCurrency.symbol}{amt.toLocaleString()}
-                  </button>
-                ))}
-              </div>
-              <button onClick={handleDeposit}
-                style={{ width: '100%', padding: '12px', background: 'linear-gradient(135deg, #3b82f6, #2563eb)', border: 'none', borderRadius: 8, color: '#fff', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
-                Proceed to Payment
-              </button>
-            </div>
-          </div>
-        </ModalOverlay>
-      )}
-
-      {/* ── Withdraw Modal ── */}
-      {showWithdrawModal && (
-        <ModalOverlay onClose={() => setShowWithdrawModal(false)}>
-          <div style={{ background: '#0d1224', border: '1px solid #2d3f5e', borderRadius: 12, padding: 24, width: 360, maxWidth: '90vw' }}>
-            <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 700, color: '#fff' }}>Withdraw Funds</h3>
-            <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 12, color: '#64748b', marginBottom: 4 }}>Available Real Balance</div>
-              <div style={{ fontSize: 20, fontWeight: 700, color: '#10b981' }}>{currency.symbol}{realBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-            </div>
-            <input type="number" value={withdrawAmount} onChange={e => setWithdrawAmount(e.target.value)}
-              placeholder="Enter amount"
-              style={{ width: '100%', background: '#1a2035', border: '1px solid #2d3f5e', borderRadius: 8, padding: '10px 12px', color: '#fff', fontSize: 14, outline: 'none', boxSizing: 'border-box', marginBottom: 12 }}
-            />
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button onClick={() => setShowWithdrawModal(false)} style={{ flex: 1, padding: '10px', background: '#1a2035', border: '1px solid #2d3f5e', borderRadius: 8, color: '#94a3b8', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
-              <button onClick={handleWithdraw} style={{ flex: 1, padding: '10px', background: '#059669', border: 'none', borderRadius: 8, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>Submit</button>
-            </div>
-          </div>
-        </ModalOverlay>
-      )}
-
       {/* FIX 2: Bottom Nav — ALL devices, order: Trade / History / Copy Trade / Account */}
+
+      {/* ⚡ Active Trades Floating Button */}
+      {activeTrades.length > 0 && (
+        <button
+          onClick={() => setShowActiveTradesPanel(true)}
+          style={{ position: 'fixed', bottom: 70, right: 16, zIndex: 40 }}
+          className="bg-zinc-800 border border-zinc-700 rounded-full px-4 py-2 flex items-center gap-2 text-white text-sm font-semibold shadow-lg"
+        >
+          <span>⚡ Active Trades</span>
+          <span className="bg-blue-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+            {activeTrades.length}
+          </span>
+        </button>
+      )}
+
+      {/* ⚡ Active Trades Overlay Panel */}
+      {showActiveTradesPanel && (
+        <div
+          className="fixed inset-0 bg-black/60 z-50 flex items-end justify-center"
+          onClick={(e) => { if (e.target === e.currentTarget) setShowActiveTradesPanel(false); }}
+        >
+          <div className="bg-zinc-900 border-t border-zinc-700 rounded-t-2xl w-full max-w-lg p-4 max-h-[70vh] overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-white font-bold text-base">Active Trades</span>
+              <button
+                onClick={() => setShowActiveTradesPanel(false)}
+                className="text-zinc-400 hover:text-white text-xl leading-none"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Empty state */}
+            {activeTrades.length === 0 ? (
+              <p className="text-zinc-400 text-center py-8">No active trades</p>
+            ) : (
+              activeTrades.map((trade) => (
+                <ActiveTradeRow key={trade.id} trade={trade} />
+              ))
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="td-bottom-nav">
         {([
           { tab: 'trade' as const, label: 'Trade', icon: (
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>
+            </svg>
           )},
           { tab: 'history' as const, label: 'History', icon: (
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+            </svg>
           )},
           { tab: 'copytrade' as const, label: 'Copy Trade', icon: (
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4h-8a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 1 0-7.75"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
           )},
           { tab: 'account' as const, label: 'Account', icon: (
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4h-8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+            </svg>
           )},
         ] as Array<{ tab: 'trade' | 'history' | 'account' | 'copytrade'; label: string; icon: React.ReactNode }>).map(item => (
           <button key={item.tab} className="td-bottom-nav-btn" onClick={() => setActiveTab(item.tab)}
-            style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, background: 'transparent', border: 'none', cursor: 'pointer', color: activeTab === item.tab ? (item.tab === 'copytrade' ? '#10b981' : '#3b82f6') : '#64748b', borderTop: activeTab === item.tab ? ('2px solid ' + (item.tab === 'copytrade' ? '#10b981' : '#3b82f6')) : '2px solid transparent', paddingTop: 2 }}>
+            style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, background: 'transparent', border: 'none', cursor: 'pointer', color: activeTab === item.tab ? '#2563eb' : '#71717a', borderTop: activeTab === item.tab ? '2px solid #2563eb' : '2px solid transparent', paddingTop: 2 }}>
             {item.icon}
             <span style={{ fontSize: 9, fontWeight: 600 }}>{item.label}</span>
           </button>

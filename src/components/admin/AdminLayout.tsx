@@ -3,22 +3,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import {
-  LayoutDashboard,
-  Users,
-  ArrowDownCircle,
-  ArrowUpCircle,
-  Activity,
-  CreditCard,
-  BarChart3,
-  Cog,
-  LogOut,
-  Menu,
-  X,
-  ChevronRight,
-  Shield,
-  Copy,
-} from 'lucide-react';
+import { LayoutDashboard, Users, ArrowDownCircle, ArrowUpCircle, Activity, CreditCard, BarChart3, Cog, LogOut, Menu, X, ChevronRight, Copy,  } from 'lucide-react';
 import Icon from '@/components/ui/AppIcon';
 
 
@@ -70,12 +55,14 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
         }`}
       >
         {/* Logo */}
-        <div className="flex items-center gap-3 px-6 py-5 border-b border-white/10">
-          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-            <Shield size={16} className="text-white" />
-          </div>
+        <div className="flex items-center px-6 py-5 border-b border-white/10" style={{ gap: 6 }}>
+          <img
+            src="/assets/images/LOGO_PANJANG-1773100758034.png"
+            alt="Investoft"
+            style={{ height: 36, width: 'auto', objectFit: 'contain', display: 'block' }}
+          />
           <div>
-            <p className="text-sm font-bold text-white">Admin Panel</p>
+            <p className="text-sm font-bold text-white" style={{ fontFamily: "'Satoshi', sans-serif", fontWeight: 700 }}>Admin Panel</p>
             <p className="text-xs text-gray-500">Investoft</p>
           </div>
           <button

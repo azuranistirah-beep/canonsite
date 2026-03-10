@@ -23,7 +23,10 @@ export const metadata: Metadata = {
   description: 'This platform connects traders with real-time market data, offering an intuitive admin and member dashboard for seamless trading experiences.',
   icons: {
     icon: [
-      { url: '/favicon.ico', type: 'image/x-icon' }
+      { url: 'https://dhiwise-assets.s3.ap-south-1.amazonaws.com/uploadAttachments/LOGO_PANJANG-1773100758034.png', type: 'image/png' }
+    ],
+    apple: [
+      { url: 'https://dhiwise-assets.s3.ap-south-1.amazonaws.com/uploadAttachments/LOGO_PANJANG-1773100758034.png' }
     ],
   },
 };

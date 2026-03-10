@@ -8,16 +8,12 @@ export default function Footer() {
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-8 sm:gap-10 md:gap-12 mb-10 sm:mb-12">
           {/* Brand */}
           <div className="col-span-2 sm:col-span-3 md:col-span-1">
-            <div className="flex items-center gap-2 mb-4 sm:mb-6 cursor-pointer">
-              <div className="bg-blue-600 rounded p-1">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-white">
-                  <path d="M3 3v16a2 2 0 0 0 2 2h16" />
-                  <path d="M18 17V9" />
-                  <path d="M13 17V5" />
-                  <path d="M8 17v-3" />
-                </svg>
-              </div>
-              <span className="text-lg sm:text-xl font-bold text-white">Investoft</span>
+            <div className="flex items-center mb-4 sm:mb-6 cursor-pointer" style={{ gap: 6 }}>
+              <img
+                src="/assets/images/LOGO_PANJANG-1773100758034.png"
+                alt="Investoft"
+                style={{ height: 32, width: 'auto', objectFit: 'contain', display: 'block' }}
+              />
             </div>
             <p className="text-sm leading-relaxed max-w-xs">Advanced trading platform for everyone. Trade with confidence and precision.</p>
           </div>

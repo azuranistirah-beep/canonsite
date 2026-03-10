@@ -11,8 +11,13 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Skip middleware for non-GET requests (POST, PUT, etc.) to avoid interfering with API calls
+  if (request.method !== 'GET') {
+    return NextResponse.next();
+  }
+
   // Build a response we can attach refreshed cookies to
-  const response = NextResponse.next({
+  let response = NextResponse.next({
     request: { headers: request.headers },
   });
 
@@ -35,6 +40,7 @@ export async function middleware(request: NextRequest) {
   );
 
   // Server-side session verification
+  // getUser() validates the JWT with Supabase server — more secure than getSession()
   const {
     data: { user },
     error,

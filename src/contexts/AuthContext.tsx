@@ -155,6 +155,62 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const initAuth = async () => {
       if (!isMounted) return;
 
+      // ── Safety timeout: force loading=false after 5s to prevent stuck spinner ──
+      const safetyTimer = setTimeout(() => {
+        if (isMounted) {
+          setLoading(false);
+        }
+      }, 5000);
+
+      // ── Explicitly seed session from localStorage/cookies first ──────────
+      // Without this, onAuthStateChange fires INITIAL_SESSION with null even
+      // when the user IS logged in (session stored in localStorage).
+      incrementAuthCounter('getSession');
+      let seededSession: any = null;
+      try {
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+        if (!isMounted) return;
+        if (sessionError) {
+          const msg = sessionError.message || '';
+          if (is429Error(msg)) {
+            console.warn('[AuthContext] 429 from getSession — activating cooldown');
+            set429Cooldown();
+            setRateLimited(true);
+            setLoading(false);
+            inFlightRef.current = false;
+            return;
+          }
+          if (isInvalidRefreshTokenError(msg)) {
+            await handleInvalidRefreshToken();
+            inFlightRef.current = false;
+            return;
+          }
+        }
+        if (sessionData?.session) {
+          seededSession = sessionData.session;
+          if (!isTokenValid(seededSession.access_token)) {
+            if (!seededSession.refresh_token) {
+              await handleInvalidRefreshToken();
+              inFlightRef.current = false;
+              return;
+            }
+          } else {
+            // Immediately set user so components don't wait for INITIAL_SESSION
+            setSession(seededSession);
+            setUser(seededSession.user ?? null);
+            setLoading(false);
+          }
+        } else {
+          setSession(null);
+          setUser(null);
+          setLoading(false);
+        }
+      } catch (e: any) {
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('[AuthContext] getSession error:', e?.message);
+        }
+      }
+
       // Register onAuthStateChange ONCE.
       // IMPORTANT: We do NOT call getSession() separately here.
       // The INITIAL_SESSION event fired by onAuthStateChange already provides
@@ -188,12 +244,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
             setSession(null);
             setUser(null);
             setLoading(false);
+            // Reset loginInProgress so user can sign in again
+            loginInProgressRef.current = false;
             // Only redirect to /auth if:
             // 1. Not currently doing a hard navigation (window.location.href)
             // 2. Not already on /auth page
             // 3. Not in the middle of a login flow
             if (
-              !loginInProgressRef.current &&
               !hardNavigatingRef.current &&
               typeof window !== 'undefined' &&
               !window.location.pathname.startsWith('/auth')
@@ -214,7 +271,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               }
               setSession(currentSession);
               setUser(currentSession.user ?? null);
-            } else {
+            } else if (!seededSession) {
+              // Only clear if getSession() also found nothing
               setSession(null);
               setUser(null);
             }
@@ -225,7 +283,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               const counters = (window as any).__authCallCounters || {};
               console.log(
                 `[AuthCounter] Mount complete — getSession: ${counters.getSession ?? 0}, onAuthStateChange: ${counters.onAuthStateChange ?? 0}`,
-                '(target: getSession=0, onAuthStateChange=1)'
+                '(target: getSession=1, onAuthStateChange=1)'
               );
             }
           }
@@ -233,6 +291,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       );
       subscriptionRef.current = data.subscription;
       inFlightRef.current = false;
+      clearTimeout(safetyTimer);
     };
 
     initAuth().catch((err: any) => {
@@ -278,6 +337,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         setLoading(false);
         return;
       }
+      // Ignore duplicate sign-in errors — these are handled by the auth page
+      if (message.toLowerCase().includes('sign-in already in progress')) {
+        event.preventDefault();
+        return;
+      }
       if (
         isInvalidRefreshTokenError(message) &&
         !alreadyRecoveredRef.current &&
@@ -296,6 +360,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => {
       isMounted = false;
       subscriptionRef.current?.unsubscribe();
+      // Keep inFlightRef reset so any in-flight call is cleared on unmount.
+      // Do NOT reset initializedRef here — resetting it causes StrictMode's
+      // second mount to re-run initAuth(), which fires INITIAL_SESSION with
+      // null before localStorage is read, breaking session persistence on reload.
+      inFlightRef.current = false;
       if (typeof window !== 'undefined') {
         window.removeEventListener('error', handleAuthError);
         window.removeEventListener('unhandledrejection', handleUnhandledRejection);
@@ -328,7 +397,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (process.env.NODE_ENV === 'development') {
         console.warn('[AuthContext] signIn: already in progress, ignoring duplicate call');
       }
-      throw new Error('Sign-in already in progress. Please wait.');
+      // Return null instead of throwing to prevent unhandled rejections
+      return null;
     }
     loginInProgressRef.current = true;
     if (process.env.NODE_ENV === 'development') {
@@ -344,15 +414,20 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           set429Cooldown();
           setRateLimited(true);
         }
+        // Reset loginInProgressRef only on error so SIGNED_OUT guard stays active during navigation
+        loginInProgressRef.current = false;
         throw error;
       }
       // Set hard-navigating flag BEFORE returning so that when the caller
       // does window.location.href = '/admin', any SIGNED_OUT event fired
       // during page unload won't redirect back to /auth.
+      // NOTE: Do NOT reset loginInProgressRef here — keep it true until page unloads
+      // so the SIGNED_OUT guard remains active during the navigation transition.
       hardNavigatingRef.current = true;
       return data;
-    } finally {
-      loginInProgressRef.current = false;
+    } catch (err) {
+      // loginInProgressRef already reset above on auth error; re-throw
+      throw err;
     }
   };
 
@@ -360,6 +435,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const signOut = async () => {
     // Clear hard-navigating flag so SIGNED_OUT redirect works normally on logout
     hardNavigatingRef.current = false;
+    // Reset loginInProgress so user can sign in again after logout
+    loginInProgressRef.current = false;
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);

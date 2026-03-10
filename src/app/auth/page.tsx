@@ -5,57 +5,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '../../lib/supabase/client';
 
 
-// ─── Safe ErrorBoundary — never accesses window.__ErrorBoundary ──────────────
-class AuthErrorBoundary extends React.Component<
-  { children: React.ReactNode },
-  { hasError: boolean; errorMsg: string }
-> {
-  constructor(props: { children: React.ReactNode }) {
-    super(props);
-    this.state = { hasError: false, errorMsg: '' };
-  }
-  static getDerivedStateFromError(error: unknown) {
-    const msg =
-      error instanceof Error
-        ? error.message
-        : typeof error === 'string'
-        ? error
-        : JSON.stringify(error);
-    return { hasError: true, errorMsg: msg };
-  }
-  componentDidCatch(error: unknown, info: React.ErrorInfo) {
-    console.error('[AuthErrorBoundary] Caught render error:', error, info?.componentStack);
-  }
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div
-          className="min-h-screen flex items-center justify-center p-4"
-          style={{ background: '#0a0e1a' }}
-        >
-          <div
-            className="w-full max-w-md rounded-2xl p-6"
-            style={{
-              background: 'rgba(239,68,68,0.08)',
-              border: '1px solid rgba(239,68,68,0.3)',
-            }}
-          >
-            <p className="text-red-400 font-bold mb-2">⚠ Render Error (caught safely)</p>
-            <p className="text-red-300 text-sm break-all">{this.state.errorMsg}</p>
-            <button
-              onClick={() => this.setState({ hasError: false, errorMsg: '' })}
-              className="mt-4 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700"
-            >
-              Try Again
-            </button>
-          </div>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
-
 function getPasswordStrength(password: string): { strength: 'weak' | 'medium' | 'strong'; score: number; label: string } {
   let score = 0;
   if (password.length >= 8) score++;
@@ -139,7 +88,7 @@ const COUNTRY_CODES = [
   { code: '+961', flag: '🇱🇧', name: 'Lebanon' },
 ];
 
-function AuthPageInner() {
+function AuthPage() {
   const router = useRouter();
   const { user, loading, signUp, signIn, rateLimited, setHardNavigating } = useAuth();
   const redirectingRef = React.useRef(false);
@@ -204,7 +153,7 @@ function AuthPageInner() {
     if (!loading && user && !redirectingRef.current && !signupJustCompletedRef.current) {
       redirectingRef.current = true;
       const dest = user.email === ADMIN_EMAIL ? '/admin' : '/trade';
-      window.location.href = dest;
+      router.replace(dest);
     }
   }, [user, loading]);
 
@@ -405,6 +354,9 @@ function AuthPageInner() {
         setSiErrorType('other');
         try { sessionStorage.setItem('investoft_si_cooldown_until', String(Date.now() + 60000)); } catch (e) {}
         startCooldown(setSiCooldown, siCooldownRef, 60);
+      } else if (msg.toLowerCase().includes('sign-in already in progress')) {
+        // Swallow duplicate call silently — already navigating
+        return;
       } else if (msg.toLowerCase().includes('network') || msg.toLowerCase().includes('fetch')) {
         setSiError('Connection failed. Please check your internet connection and try again.');
         setSiErrorType('other');
@@ -415,13 +367,20 @@ function AuthPageInner() {
       return;
     }
 
-    // ── STEP 2: Validate session ─────────────────────────────────────────────
+    // If signIn returned null (duplicate call guard), exit silently
+    if (!sessionData) return;
+
+    // ── STEP 2: Set redirect guard IMMEDIATELY to block useEffect double-redirect
+    redirectingRef.current = true;
+
+    // ── STEP 3: Validate session ─────────────────────────────────────────────
     const session = sessionData?.session ?? null;
     const sessionUser = session?.user ?? sessionData?.user ?? null;
 
     console.log('[LOGIN_OK] User:', sessionUser?.email, '| Session:', session ? 'EXISTS' : 'NULL');
 
     if (!session || !sessionUser) {
+      redirectingRef.current = false;
       setSiError('Login did not produce a session. Possible Supabase configuration mismatch.');
       setSiErrorType('env_mismatch');
       return;
@@ -436,21 +395,17 @@ function AuthPageInner() {
       }
     } catch (e) {}
 
-    // ── STEP 3: Redirect — set guard first to prevent useEffect double-redirect
+    // ── STEP 4: Redirect ─────────────────────────────────────────────────────
     const userEmail = sessionUser.email ?? '';
     console.log('[AUTH_REDIRECT] Email:', userEmail, '| Redirecting directly based on email');
 
-    // Set redirectingRef BEFORE window.location.href to prevent
-    // the useEffect above from also triggering a redirect
-    redirectingRef.current = true;
     // Also set hardNavigating in AuthContext to prevent SIGNED_OUT loop
     if (typeof setHardNavigating === 'function') {
       setHardNavigating(true);
     }
 
-    // Redirect directly to admin or trade based on email
     const dest = userEmail === ADMIN_EMAIL ? '/admin' : '/trade';
-    window.location.href = dest;
+    router.replace(dest);
   }
 
   // ─── Sign Up handler ─────────────────────────────────────────────────────────
@@ -530,13 +485,12 @@ function AuthPageInner() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center gap-2 mb-4">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)' }}>
-              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-              </svg>
-            </div>
-            <span className="text-2xl font-bold text-white">Investoft</span>
+          <div className="inline-flex items-center mb-4" style={{ gap: 6 }}>
+            <img
+              src="/assets/images/LOGO_PANJANG-1773100758034.png"
+              alt="Investoft"
+              style={{ height: 52, width: 'auto', objectFit: 'contain', display: 'block' }}
+            />
           </div>
           <p className="text-gray-400 text-sm">Professional Trading Platform</p>
         </div>
@@ -606,7 +560,7 @@ function AuthPageInner() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setForgotMode(true); setForgotEmail(siEmail); setForgotMsg(''); }}
+                  onClick={() => { setForgotMode(false); setForgotEmail(''); setForgotMsg(''); }}
                   className="w-full py-2 text-sm text-gray-400 hover:text-gray-300 transition-colors"
                 >
                   &#8592; Back to Login
@@ -875,10 +829,4 @@ function AuthPageInner() {
   );
 }
 
-export default function AuthPage() {
-  return (
-    <AuthErrorBoundary>
-      <AuthPageInner />
-    </AuthErrorBoundary>
-  );
-}
+export default AuthPage;

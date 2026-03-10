@@ -28,21 +28,35 @@ interface Currency {
 
 const DURATION_PRESETS = [
   { label: '5s', seconds: 5 },
+  { label: '10s', seconds: 10 },
   { label: '15s', seconds: 15 },
+  { label: '20s', seconds: 20 },
   { label: '30s', seconds: 30 },
   { label: '1m', seconds: 60 },
+  { label: '2m', seconds: 120 },
+  { label: '3m', seconds: 180 },
   { label: '5m', seconds: 300 },
-  { label: '15m', seconds: 900 },
+  { label: '10m', seconds: 600 },
+  { label: '20m', seconds: 1200 },
   { label: '30m', seconds: 1800 },
+  { label: '40m', seconds: 2400 },
+  { label: '50m', seconds: 3000 },
   { label: '1h', seconds: 3600 },
+  { label: '2h', seconds: 7200 },
+  { label: '3h', seconds: 10800 },
+  { label: '4h', seconds: 14400 },
+  { label: '6h', seconds: 21600 },
+  { label: '9h', seconds: 32400 },
+  { label: '12h', seconds: 43200 },
+  { label: '1d', seconds: 86400 },
+  { label: '2d', seconds: 172800 },
 ];
-
-const AMOUNT_PRESETS = [10, 50, 100, 500];
 
 function formatDuration(seconds: number): string {
   if (seconds < 60) return seconds + 's';
   if (seconds < 3600) return Math.floor(seconds / 60) + 'm';
-  return Math.floor(seconds / 3600) + 'h';
+  if (seconds < 86400) return Math.floor(seconds / 3600) + 'h';
+  return Math.floor(seconds / 86400) + 'd';
 }
 
 function formatPrice(price: number, category: string): string {
@@ -57,7 +71,6 @@ function formatPrice(price: number, category: string): string {
   return price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-// Category color dot for suggestion items
 const CATEGORY_COLORS: Record<string, string> = {
   crypto: '#f59e0b',
   forex: '#3b82f6',
@@ -109,6 +122,195 @@ interface TradeMainContentProps {
   tradeHistoryLength: number;
   allAssets?: Asset[];
 }
+
+const STEPPER_STYLES = `
+  /* ── Stepper controls ── */
+  .td-stepper-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #27272a;
+    border: 1px solid #3f3f46;
+    color: #fff;
+    font-size: 20px;
+    font-weight: 400;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    line-height: 1;
+    transition: all 0.15s;
+  }
+  .td-stepper-btn:active {
+    background: #3f3f46;
+    transform: scale(0.92);
+  }
+  .td-stepper-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+  .td-stepper-value {
+    flex: 1;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    min-width: 60px;
+  }
+  .td-stepper-amount-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    min-width: 60px;
+    width: 80px;
+    -webkit-appearance: none;
+    -moz-appearance: textfield;
+  }
+  .td-stepper-amount-input::-webkit-outer-spin-button,
+  .td-stepper-amount-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  /* Mobile/Desktop unified stepper controls — shown on ALL screen sizes */
+  .td-mobile-controls {
+    display: flex !important;
+    flex-direction: column;
+    gap: 8px;
+    padding: 8px 12px;
+    background: #000000;
+    flex-shrink: 0;
+  }
+  .td-controls-grid-desktop {
+    display: none !important;
+  }
+  .td-mobile-stepper-row {
+    display: flex;
+    gap: 8px;
+  }
+  .td-mobile-stepper-col {
+    flex: 1;
+    background: #18181b;
+    border-radius: 12px;
+    padding: 7px 10px;
+    border: 1px solid #27272a;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .td-mobile-stepper-label {
+    font-size: 10px;
+    color: #a1a1aa;
+    font-weight: 500;
+  }
+  .td-mobile-stepper-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+  }
+  .td-mobile-stepper-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #27272a;
+    border: 1px solid #3f3f46;
+    color: #fff;
+    font-size: 18px;
+    font-weight: 400;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    line-height: 1;
+  }
+  .td-mobile-stepper-btn:active {
+    background: #3f3f46;
+    transform: scale(0.92);
+  }
+  .td-mobile-stepper-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+  .td-mobile-stepper-value {
+    flex: 1;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    min-width: 60px;
+  }
+  .td-mobile-amount-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+    min-width: 60px;
+    width: 80px;
+    -webkit-appearance: none;
+    -moz-appearance: textfield;
+  }
+  .td-mobile-amount-input::-webkit-outer-spin-button,
+  .td-mobile-amount-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  .td-mobile-trade-btns {
+    display: flex;
+    gap: 8px;
+  }
+  .td-mobile-sell-btn {
+    flex: 1;
+    height: 72px;
+    background: #ef4444;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+  }
+  .td-mobile-sell-btn:not(:disabled):active {
+    transform: scale(0.96);
+    filter: brightness(0.9);
+  }
+  .td-mobile-sell-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  .td-mobile-buy-btn {
+    flex: 1;
+    height: 72px;
+    background: #22c55e;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+  }
+  .td-mobile-buy-btn:not(:disabled):active {
+    transform: scale(0.96);
+    filter: brightness(0.9);
+  }
+  .td-mobile-buy-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
 
 export default function TradeMainContent({
   selectedAsset,
@@ -163,12 +365,119 @@ export default function TradeMainContent({
   const searchRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  // Manual amount input state
+  const [manualAmountValue, setManualAmountValue] = useState(amount.toString());
+  const [amountInputInvalid, setAmountInputInvalid] = useState(false);
+
+  // Mobile amount input state
+  const [mobileAmountValue, setMobileAmountValue] = useState(amount.toString());
+
+  // Sync manual input when amount changes externally
+  useEffect(() => {
+    setManualAmountValue(amount.toString());
+    setMobileAmountValue(amount.toString());
+    setAmountInputInvalid(false);
+  }, [amount]);
+
+  const handleManualAmountChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    setManualAmountValue(raw);
+    const val = parseFloat(raw);
+    if (!raw || isNaN(val) || val <= 0 || val > currentBalance) {
+      setAmountInputInvalid(true);
+    } else {
+      setAmountInputInvalid(false);
+      setAmount(val);
+      setAmountInput(val.toString());
+    }
+  }, [currentBalance, setAmount, setAmountInput]);
+
+  const handleManualAmountBlur = useCallback(() => {
+    const val = parseFloat(manualAmountValue);
+    if (!manualAmountValue || isNaN(val) || val <= 0) {
+      setManualAmountValue(amount.toString());
+      setAmountInputInvalid(false);
+    } else {
+      const clamped = Math.min(val, currentBalance, 10000);
+      setAmount(clamped);
+      setAmountInput(clamped.toString());
+      setManualAmountValue(clamped.toString());
+      setAmountInputInvalid(false);
+    }
+  }, [manualAmountValue, amount, currentBalance, setAmount, setAmountInput]);
+
+  // Mobile amount handlers
+  const handleMobileAmountChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    setMobileAmountValue(raw);
+    const val = parseFloat(raw);
+    if (!isNaN(val) && val >= 10 && val <= Math.min(currentBalance, 10000)) {
+      setAmount(val);
+      setAmountInput(val.toString());
+      setManualAmountValue(val.toString());
+    }
+  }, [currentBalance, setAmount, setAmountInput]);
+
+  const handleMobileAmountBlur = useCallback(() => {
+    const val = parseFloat(mobileAmountValue);
+    if (isNaN(val) || val < 10) {
+      setMobileAmountValue('10');
+      setAmount(10);
+      setAmountInput('10');
+      setManualAmountValue('10');
+    } else {
+      const clamped = Math.min(val, currentBalance, 10000);
+      setMobileAmountValue(clamped.toString());
+      setAmount(clamped);
+      setAmountInput(clamped.toString());
+      setManualAmountValue(clamped.toString());
+    }
+  }, [mobileAmountValue, currentBalance, setAmount, setAmountInput]);
+
+  // Duration stepper
+  const currentDurationIndex = DURATION_PRESETS.findIndex(p => p.seconds === duration);
+  const handleDurationDecrease = useCallback(() => {
+    const idx = DURATION_PRESETS.findIndex(p => p.seconds === duration);
+    const newIdx = Math.max(0, idx === -1 ? 0 : idx - 1);
+    setDuration(DURATION_PRESETS[newIdx].seconds);
+    setDurationInput(DURATION_PRESETS[newIdx].seconds.toString());
+  }, [duration, setDuration, setDurationInput]);
+
+  const handleDurationIncrease = useCallback(() => {
+    const idx = DURATION_PRESETS.findIndex(p => p.seconds === duration);
+    const newIdx = Math.min(DURATION_PRESETS.length - 1, idx === -1 ? 0 : idx + 1);
+    setDuration(DURATION_PRESETS[newIdx].seconds);
+    setDurationInput(DURATION_PRESETS[newIdx].seconds.toString());
+  }, [duration, setDuration, setDurationInput]);
+
+  // Amount stepper
+  const handleAmountDecrease = useCallback(() => {
+    const newVal = Math.max(1, amount - 1);
+    setAmount(newVal);
+    setAmountInput(newVal.toString());
+    setManualAmountValue(newVal.toString());
+    setMobileAmountValue(newVal.toString());
+  }, [amount, setAmount, setAmountInput]);
+
+  const handleAmountIncrease = useCallback(() => {
+    const newVal = Math.min(Math.min(currentBalance, 10000), amount + 1);
+    setAmount(newVal);
+    setAmountInput(newVal.toString());
+    setManualAmountValue(newVal.toString());
+    setMobileAmountValue(newVal.toString());
+  }, [amount, currentBalance, setAmount, setAmountInput]);
+
+  // Get current duration label
+  const currentDurationLabel = useMemo(() => {
+    const preset = DURATION_PRESETS.find(p => p.seconds === duration);
+    return preset ? preset.label : formatDuration(duration);
+  }, [duration]);
+
   // Filter suggestions from allAssets based on searchQuery
   const suggestions = React.useMemo(() => {
     const safeAssets = Array.isArray(allAssets) ? allAssets : [];
     const q = searchQuery.trim().toLowerCase();
     if (!q) {
-      // Show top 10 default assets when empty
       return safeAssets.slice(0, 10);
     }
     return safeAssets.filter(a =>
@@ -200,24 +509,28 @@ export default function TradeMainContent({
     setSearchQuery(selectedAsset.symbol);
   }, [selectedAsset.symbol]);
 
+  const isTradeDisabled = isPlacingTrade || copyTradeActive;
+
   return (
     <div
-      className="td-main-content td-main-wrapper"
-      style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}
+      className="td-main-content"
+      style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}
     >
-      {/* Chart Area — fills all remaining flex space */}
+      <style dangerouslySetInnerHTML={{ __html: STEPPER_STYLES }} />
+
+      {/* Chart Area */}
       <div
         className="td-chart-area"
         style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}
       >
-        {/* Search bar toolbar — sits above chart */}
+        {/* Search bar toolbar */}
         <div
           className="td-search-toolbar"
-          style={{ background: '#0d1224', borderBottom: '1px solid #1e2a45', padding: '4px 10px', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, position: 'relative', zIndex: 200 }}
+          style={{ background: '#000000', borderBottom: '1px solid #1a1a1a', padding: '4px 10px', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0, position: 'relative', zIndex: 200 }}
         >
           {/* Search with suggestions */}
           <div ref={searchRef} style={{ position: 'relative', flexShrink: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', background: '#1a2035', border: '1px solid #2d3f5e', borderRadius: 6, padding: '3px 8px', gap: 5 }}>
+            <div style={{ display: 'flex', alignItems: 'center', background: '#111111', border: '1px solid #27272a', borderRadius: 6, padding: '3px 8px', gap: 5 }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2">
                 <circle cx="11" cy="11" r="8"/>
                 <line x1="21" y1="21" x2="16.65" y2="16.65"/>
@@ -244,11 +557,11 @@ export default function TradeMainContent({
                   width: 260,
                   maxHeight: 320,
                   overflowY: 'auto',
-                  background: '#0d1117',
-                  border: '1px solid #2d3748',
+                  background: '#111111',
+                  border: '1px solid #27272a',
                   borderRadius: 8,
                   zIndex: 9999,
-                  boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.8)',
                   WebkitOverflowScrolling: 'touch',
                 } as React.CSSProperties}
               >
@@ -276,7 +589,6 @@ export default function TradeMainContent({
                       onMouseLeave={e => { if (!isSelected) (e.currentTarget as HTMLButtonElement).style.background = 'transparent'; }}
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        {/* Colored dot indicator */}
                         <div style={{ width: 8, height: 8, borderRadius: '50%', background: CATEGORY_COLORS[asset.category] || '#64748b', flexShrink: 0 }} />
                         <div style={{ textAlign: 'left' }}>
                           <div style={{ fontSize: 12, fontWeight: 700, color: isSelected ? '#60a5fa' : '#e2e8f0' }}>{asset.symbol}</div>
@@ -294,16 +606,16 @@ export default function TradeMainContent({
           </div>
         </div>
 
-        {/* Chart Container — absolutely positioned iframe fills 100% */}
+        {/* Chart Container */}
         <div
           ref={chartContainerRef}
           className="td-chart-container"
-          style={{ flex: 1, position: 'relative', background: '#0a0e1a', width: '100%', minHeight: 0 }}
+          style={{ flex: 1, position: 'relative', background: '#000000', width: '100%', minHeight: 0 }}
         >
           <iframe
             ref={tvWidgetRef}
             key={selectedAsset.tvSymbol}
-            src={'https://s.tradingview.com/widgetembed/?frameElementId=tradingview_chart&symbol=' + encodeURIComponent(selectedAsset.tvSymbol) + '&interval=1&hidesidetoolbar=0&hidetoptoolbar=0&symboledit=1&saveimage=0&toolbarbg=0d1224&studies=[]&theme=dark&style=1&timezone=Etc%2FUTC&withdateranges=1&showpopupbutton=1&allow_symbol_change=1&calendar=0&hotlist=0&details=0&news=0'}
+            src={'https://s.tradingview.com/widgetembed/?frameElementId=tradingview_chart&symbol=' + encodeURIComponent(selectedAsset.tvSymbol) + '&interval=1&hidesidetoolbar=0&hidetoptoolbar=1&toolbar=0&symboledit=1&saveimage=0&toolbarbg=000000&studies=[]&theme=dark&style=1&timezone=Etc%2FUTC&withdateranges=0&showpopupbutton=1&allow_symbol_change=1&calendar=0&hotlist=0&details=0&news=0'}
             className="td-chart-iframe"
             style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', border: 'none' }}
             allowFullScreen
@@ -311,10 +623,10 @@ export default function TradeMainContent({
         </div>
 
         {activeTrades.length > 0 && (
-          <div style={{ background: '#0d1224', borderTop: '1px solid #1e2a45', padding: '5px 12px', display: 'flex', gap: 8, overflowX: 'auto', flexShrink: 0 }}>
+          <div style={{ background: '#000000', borderTop: '1px solid #1a1a1a', padding: '5px 12px', display: 'flex', gap: 8, overflowX: 'auto', flexShrink: 0 }}>
             <span style={{ fontSize: 11, color: '#64748b', fontWeight: 600, whiteSpace: 'nowrap', alignSelf: 'center' }}>ACTIVE:</span>
             {activeTrades.map(trade => (
-              <div key={trade.id} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#1a2035', borderRadius: 6, padding: '3px 10px', border: '1px solid ' + (trade.direction === 'buy' ? '#065f46' : '#7f1d1d'), whiteSpace: 'nowrap', flexShrink: 0 }}>
+              <div key={trade.id} style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#111111', borderRadius: 6, padding: '3px 10px', border: '1px solid ' + (trade.direction === 'buy' ? '#065f46' : '#7f1d1d'), whiteSpace: 'nowrap', flexShrink: 0 }}>
                 <span style={{ fontSize: 11, fontWeight: 700, color: trade.direction === 'buy' ? '#10b981' : '#ef4444' }}>{trade.direction.toUpperCase()}</span>
                 <span style={{ fontSize: 11, color: '#94a3b8' }}>{trade.asset_symbol}</span>
                 <span style={{ fontSize: 11, fontWeight: 600, color: '#fff' }}>${trade.amount}</span>
@@ -323,126 +635,262 @@ export default function TradeMainContent({
           </div>
         )}
 
-        {/* Trade Panel — fixed height, does NOT stretch */}
+        {/* Trade Panel */}
         <div className="td-trade-panel">
-          <div className="td-controls-grid">
-            {/* Duration Column */}
-            <div className="td-control-col">
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span className="td-control-label" style={{ fontSize: 11, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Duration</span>
-                {isEditingDuration ? (
-                  <input ref={durationInputRef} type="number" value={durationInput}
-                    onChange={e => setDurationInput(e.target.value)}
-                    onBlur={handleDurationBlur}
-                    onKeyDown={e => { if (e.key === 'Enter') handleDurationBlur(); }}
-                    autoFocus min={5} max={3600} step={5}
-                    style={{ width: 52, background: '#1a2035', border: '1px solid #3b82f6', borderRadius: 4, padding: '2px 5px', color: '#fff', fontSize: 12, fontWeight: 700, textAlign: 'right', outline: 'none' }}
-                  />
-                ) : (
-                  <button className="td-control-value-btn" onClick={() => { setIsEditingDuration(true); setDurationInput(duration.toString()); }}
-                    style={{ background: '#1a2035', border: '1px solid #2d3f5e', borderRadius: 4, padding: '2px 7px', color: '#3b82f6', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-                    {formatDuration(duration)}
+
+          {/* ── MOBILE CONTROLS (hidden on desktop) ── */}
+          <div className="td-mobile-controls">
+            {/* Stepper row */}
+            <div className="td-mobile-stepper-row">
+              {/* Duration stepper */}
+              <div className="td-mobile-stepper-col">
+                <span className="td-mobile-stepper-label">Duration</span>
+                <div className="td-mobile-stepper-controls">
+                  <button
+                    className="td-mobile-stepper-btn"
+                    onClick={handleDurationDecrease}
+                    disabled={currentDurationIndex <= 0}
+                  >
+                    −
                   </button>
-                )}
-              </div>
-              <input className="td-range-input" type="range" min={5} max={3600} step={5} value={duration}
-                onChange={e => { const v = parseInt(e.target.value); setDuration(v); setDurationInput(v.toString()); }}
-                style={{ width: '100%', accentColor: '#3b82f6', cursor: 'pointer', height: 4 }}
-              />
-              <div className="td-range-labels" style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#475569', marginTop: 2 }}>
-                <span>5s</span><span>1h</span>
-              </div>
-              <div className="td-duration-presets" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 4, marginTop: 6 }}>
-                {DURATION_PRESETS.map(preset => (
-                  <button key={preset.seconds} className="td-preset-btn"
-                    onClick={() => { setDuration(preset.seconds); setDurationInput(preset.seconds.toString()); }}
-                    style={{ padding: '4px 2px', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 11, fontWeight: 600, background: duration === preset.seconds ? '#3b82f6' : '#1a2035', color: duration === preset.seconds ? '#fff' : '#64748b', textAlign: 'center' }}>
-                    {preset.label}
+                  <span className="td-mobile-stepper-value">{currentDurationLabel}</span>
+                  <button
+                    className="td-mobile-stepper-btn"
+                    onClick={handleDurationIncrease}
+                    disabled={currentDurationIndex >= DURATION_PRESETS.length - 1}
+                  >
+                    +
                   </button>
-                ))}
+                </div>
               </div>
-              <div style={{ position: 'relative', marginTop: 8 }}>
-                <button className="td-sell-btn td-trade-btn" onClick={() => handleTrade('sell')}
-                  disabled={isPlacingTrade || tvPrice <= 0 || copyTradeActive}
-                  style={{ width: '100%', height: 44, padding: '0 6px', border: 'none', borderRadius: 8, cursor: isPlacingTrade || tvPrice <= 0 || copyTradeActive ? 'not-allowed' : 'pointer', background: isPlacingTrade || tvPrice <= 0 || copyTradeActive ? '#374151' : 'linear-gradient(135deg, #dc2626, #b91c1c)', opacity: isPlacingTrade || tvPrice <= 0 || copyTradeActive ? 0.6 : 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, boxShadow: tvPricePositive && !copyTradeActive ? '0 4px 12px rgba(220,38,38,0.3)' : 'none', transition: 'all 0.15s', marginTop: 0 }}>
-                  <span className="td-trade-btn" style={{ fontSize: 14, fontWeight: 800, color: '#fff', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 19 2 5 22 5"/></svg>
-                    <span>SELL</span>
-                  </span>
-                  <span className="td-trade-btn-payout" style={{ fontSize: 10, fontWeight: 500, color: 'rgba(255,255,255,0.75)', letterSpacing: '0.02em' }}>Payout {selectedAsset?.payout ?? 95}%</span>
-                </button>
-                {isPriceKadaluarsa && (
-                  <div style={{ position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)', marginBottom: 4, background: 'rgba(239,68,68,0.95)', color: '#fff', fontSize: 9, fontWeight: 700, padding: '3px 8px', borderRadius: 4, whiteSpace: 'nowrap', pointerEvents: 'none' }}>
-                    {t('tradePanel.priceUnavailable')}
+
+              {/* Amount stepper */}
+              <div className="td-mobile-stepper-col">
+                <span className="td-mobile-stepper-label">Amount</span>
+                <div className="td-mobile-stepper-controls">
+                  <button
+                    className="td-mobile-stepper-btn"
+                    onClick={handleAmountDecrease}
+                    disabled={amount <= 1}
+                  >
+                    −
+                  </button>
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: '#71717a' }}>{currency.symbol}</span>
+                    <input
+                      type="number"
+                      className="td-mobile-amount-input"
+                      value={mobileAmountValue}
+                      onChange={handleMobileAmountChange}
+                      onBlur={handleMobileAmountBlur}
+                      min={10}
+                      step={10}
+                    />
                   </div>
-                )}
+                  <button
+                    className="td-mobile-stepper-btn"
+                    onClick={handleAmountIncrease}
+                    disabled={amount >= Math.min(currentBalance, 10000)}
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Mobile SELL / BUY buttons */}
+            <div className="td-mobile-trade-btns">
+              <button
+                className="td-mobile-sell-btn"
+                onClick={() => handleTrade('sell')}
+                disabled={isPlacingTrade || copyTradeActive}
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <polyline points="19 12 12 19 5 12"/>
+                  </svg>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#fff', letterSpacing: 1 }}>SELL</span>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.75)' }}>95%</span>
+                </div>
+              </button>
+              <button
+                className="td-mobile-buy-btn"
+                onClick={() => handleTrade('buy')}
+                disabled={isPlacingTrade || copyTradeActive}
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="12" y1="19" x2="12" y2="5"/>
+                    <polyline points="5 12 12 5 19 12"/>
+                  </svg>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#fff', letterSpacing: 1 }}>BUY</span>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.75)' }}>95%</span>
+                </div>
+              </button>
+            </div>
+
+            {copyTradeActive && (
+              <div style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 6, padding: '7px 10px', fontSize: 11, color: '#10b981', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                Copy Trade Active
+              </div>
+            )}
+          </div>
+
+          {/* ── DESKTOP/TABLET CONTROLS (hidden on mobile) ── */}
+          <div className="td-controls-grid-desktop td-controls-grid">
+
+            {/* Duration Column */}
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                background: '#18181b',
+                borderRadius: 12,
+                padding: 12,
+                border: '1px solid #27272a',
+                gap: 8,
+                flexShrink: 0,
+              }}
+            >
+              {/* Label */}
+              <span style={{ fontSize: 12, color: '#a1a1aa', fontWeight: 500 }}>Duration</span>
+
+              {/* Duration Stepper */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <button
+                  className="td-stepper-btn"
+                  onClick={handleDurationDecrease}
+                  disabled={currentDurationIndex <= 0}
+                >
+                  −
+                </button>
+                <span className="td-stepper-value">{currentDurationLabel}</span>
+                <button
+                  className="td-stepper-btn"
+                  onClick={handleDurationIncrease}
+                  disabled={currentDurationIndex >= DURATION_PRESETS.length - 1}
+                >
+                  +
+                </button>
+              </div>
+
+              {/* SELL button — down arrow icon ONLY, no text, no payout */}
+              <div style={{ position: 'relative' }}>
+                <button
+                  onClick={() => handleTrade('sell')}
+                  disabled={isPlacingTrade || copyTradeActive}
+                  style={{
+                    width: '100%',
+                    height: 72,
+                    padding: 0,
+                    border: 'none',
+                    borderRadius: 12,
+                    cursor: (isPlacingTrade || copyTradeActive) ? 'not-allowed' : 'pointer',
+                    background: '#ef4444',
+                    opacity: (isPlacingTrade || copyTradeActive) ? 0.5 : 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 2,
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <polyline points="19 12 12 19 5 12"/>
+                  </svg>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#fff', letterSpacing: 1 }}>SELL</span>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.75)' }}>95%</span>
+                </button>
               </div>
             </div>
 
             {/* Amount Column */}
-            <div className="td-control-col">
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                <span className="td-control-label" style={{ fontSize: 11, color: '#64748b', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Amount</span>
-                {isEditingAmount ? (
-                  <input ref={amountInputRef} type="number" value={amountInput}
-                    onChange={e => setAmountInput(e.target.value)}
-                    onBlur={handleAmountBlur}
-                    onKeyDown={e => { if (e.key === 'Enter') handleAmountBlur(); }}
-                    autoFocus min={1} max={10000}
-                    style={{ width: 64, background: '#1a2035', border: '1px solid #3b82f6', borderRadius: 4, padding: '2px 5px', color: '#fff', fontSize: 12, fontWeight: 700, textAlign: 'right', outline: 'none' }}
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                background: '#18181b',
+                borderRadius: 12,
+                padding: 12,
+                border: '1px solid #27272a',
+                gap: 8,
+                flexShrink: 0,
+              }}
+            >
+              {/* Label */}
+              <span style={{ fontSize: 12, color: '#a1a1aa', fontWeight: 500 }}>Amount</span>
+
+              {/* Amount Stepper */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <button
+                  className="td-stepper-btn"
+                  onClick={handleAmountDecrease}
+                  disabled={amount <= 1}
+                >
+                  −
+                </button>
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 3 }}>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: '#71717a', flexShrink: 0 }}>{currency.symbol}</span>
+                  <input
+                    type="number"
+                    className="td-stepper-amount-input"
+                    value={manualAmountValue}
+                    onChange={handleManualAmountChange}
+                    onBlur={handleManualAmountBlur}
+                    onKeyDown={e => { if (e.key === 'Enter') handleManualAmountBlur(); }}
+                    min={10}
+                    step={10}
                   />
-                ) : (
-                  <button className="td-control-value-btn" onClick={() => { setIsEditingAmount(true); setAmountInput(amount.toString()); }}
-                    style={{ background: '#1a2035', border: '1px solid #2d3f5e', borderRadius: 4, padding: '2px 7px', color: '#10b981', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-                    {currency.symbol}{amount.toLocaleString()}
-                  </button>
-                )}
-              </div>
-              <input className="td-range-input" type="range" min={1} max={10000} step={1} value={amount}
-                onChange={e => { const v = parseInt(e.target.value); setAmount(v); setAmountInput(v.toString()); }}
-                style={{ width: '100%', accentColor: '#10b981', cursor: 'pointer', height: 4 }}
-              />
-              <div className="td-range-labels" style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#475569', marginTop: 2 }}>
-                <span>{currency.symbol}1</span><span>{currency.symbol}10k</span>
-              </div>
-              <div className="td-amount-presets" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 4, marginTop: 6 }}>
-                {AMOUNT_PRESETS.map(preset => (
-                  <button key={preset} className="td-preset-btn"
-                    onClick={() => { setAmount(preset); setAmountInput(preset.toString()); }}
-                    style={{ padding: '4px 2px', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 11, fontWeight: 600, background: amount === preset ? '#10b981' : '#1a2035', color: amount === preset ? '#fff' : '#64748b', textAlign: 'center' }}>
-                    {currency.symbol}{preset}
-                  </button>
-                ))}
-                <button className="td-preset-btn"
-                  onClick={() => { const max = Math.min(currentBalance, 10000); setAmount(max); setAmountInput(max.toString()); }}
-                  style={{ padding: '4px 2px', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: 11, fontWeight: 600, background: '#1a2035', color: '#64748b', textAlign: 'center' }}>
-                  MAX
+                </div>
+                <button
+                  className="td-stepper-btn"
+                  onClick={handleAmountIncrease}
+                  disabled={amount >= Math.min(currentBalance, 10000)}
+                >
+                  +
                 </button>
               </div>
-              <div className="td-balance-text" style={{ fontSize: 10, color: '#475569', marginTop: 4 }}>
-                Bal: {currency.symbol}{currentBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </div>
-              <div style={{ position: 'relative', marginTop: 8 }}>
-                <button className="td-buy-btn td-trade-btn" onClick={() => handleTrade('buy')}
-                  disabled={isPlacingTrade || tvPrice <= 0 || copyTradeActive}
-                  style={{ width: '100%', height: 44, padding: '0 6px', border: 'none', borderRadius: 8, cursor: isPlacingTrade || tvPrice <= 0 || copyTradeActive ? 'not-allowed' : 'pointer', background: isPlacingTrade || tvPrice <= 0 || copyTradeActive ? '#374151' : 'linear-gradient(135deg, #059669, #047857)', opacity: isPlacingTrade || tvPrice <= 0 || copyTradeActive ? 0.6 : 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, boxShadow: tvPricePositive && !copyTradeActive ? '0 4px 12px rgba(5,150,105,0.3)' : 'none', transition: 'all 0.15s', marginTop: 0 }}>
-                  <span className="td-trade-btn" style={{ fontSize: 14, fontWeight: 800, color: '#fff', letterSpacing: '0.05em', display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 5 22 19 2 19"/></svg>
-                    <span>BUY</span>
-                  </span>
-                  <span className="td-trade-btn-payout" style={{ fontSize: 10, fontWeight: 500, color: 'rgba(255,255,255,0.75)', letterSpacing: '0.02em' }}>Payout {selectedAsset?.payout ?? 95}%</span>
+
+              {/* BUY button — up arrow icon ONLY, no text, no payout */}
+              <div style={{ position: 'relative' }}>
+                <button
+                  onClick={() => handleTrade('buy')}
+                  disabled={isPlacingTrade || copyTradeActive}
+                  style={{
+                    width: '100%',
+                    height: 72,
+                    padding: 0,
+                    border: 'none',
+                    borderRadius: 12,
+                    cursor: (isPlacingTrade || copyTradeActive) ? 'not-allowed' : 'pointer',
+                    background: '#22c55e',
+                    opacity: (isPlacingTrade || copyTradeActive) ? 0.5 : 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 2,
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="12" y1="19" x2="12" y2="5"/>
+                    <polyline points="5 12 12 5 19 12"/>
+                  </svg>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: '#fff', letterSpacing: 1 }}>BUY</span>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.75)' }}>95%</span>
                 </button>
-                {isPriceKadaluarsa && (
-                  <div style={{ position: 'absolute', bottom: '100%', left: '50%', transform: 'translateX(-50%)', marginBottom: 4, background: 'rgba(239,68,68,0.95)', color: '#fff', fontSize: 9, fontWeight: 700, padding: '3px 8px', borderRadius: 4, whiteSpace: 'nowrap', pointerEvents: 'none' }}>
-                    {t('tradePanel.priceUnavailable')}
-                  </div>
-                )}
               </div>
             </div>
+
           </div>
 
           {copyTradeActive && (
-            <div style={{ padding: '0 10px 8px', background: '#0d1224' }}>
+            <div style={{ padding: '0 10px 8px', background: '#000000' }}>
               <div style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 6, padding: '7px 10px', fontSize: 11, color: '#10b981', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                 Copy Trade Active — <span style={{ color: '#64748b', fontSize: 10 }}>Manual trading disabled</span>
